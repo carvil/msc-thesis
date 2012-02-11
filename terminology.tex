@@ -1,0 +1,28 @@
+\bthisterminology{10}
+\termitem{Abstract Class}{
+An abstract class is an \writeterm{abstract type} containing variables and methods (with or without bodies), whose purpose is to act as a place-holder for additional variables and methods to be added by subclasses.\\
+It is not possible to instantiate abstract classes. Furthermore, it is not necessary to have a complete implementation of it, leaving the implementation details to a class that \writeterm{extends} the abstract class. Thus, it is possible for each subclass to override the defined methods in the abstract class specializing them according to their own needs.\\
+Moreover, the abstract classes specify a public interface which can be inherited by its subclasses, allowing all the subclasses to have the same interface.\\
+Finally, Java does not allow multiple inheritance concerning to abstract classes. A non-abstract class can only extend one abstract class, and an abstract class can be extended by a number of classes.
+}
+\termitem{Abstract Syntax Tree}{
+Is a tree representation of the syntax of a given source code. After parse a given input file with a parser, an AST is created with the syntactic information of the input file.}
+
+\termitem{Class}{
+Unlike the abstract class, a class, composed by variables and methods, must provide a complete implementation of their own methods.\\ 
+Furthermore, a class is meant to have objects instantiated from it, providing those objects has the same variables and methods, and letting them have their own values.\\
+As it was explained above, a class can implement a number of Interfaces and only extend one class/abstract class. For each Interface implemented, the class must complete its methods and the same happens for the extended abstract class.\\
+Furthermore, it is also possible to extend one non-abstract class, and re-implement all its methods.
+}
+\termitem{Interface}{
+An Interface is conceptually an \writeterm{abstract type} composed simply by method headers and static final variables (constant declarations), whose purpose is to specify how the interconnection between different systems and the one in question should work.\\ 
+Furthermore, the implementation of the methods and the creation of non-static final variables is forbidden in an Interface, and should be left for an implementation class.\\ 
+Each class (including abstract classes) can implement a number of interfaces, and it should specify the methods presented in each one. In fact, this is the only kind of multiple inheritance allowed in Java.
+}
+\termitem{Object-Oriented paradigm}{
+Is a programming paradigm that makes use of objects are a mean of interact with design applications and computer programs.
+}
+\termitem{Pure Type}{
+Pure types are immutable types, side-effect free. This means that after the creation of an object of a pure type, its value cannot be changed in any state of the execution of a program.}
+
+\ethisterminology

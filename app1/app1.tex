@@ -1,0 +1,720 @@
+% ********** Appendix 1 **********
+\chapter{Specification of the JML Abstract Representation}
+\label{appendix:jmlast}
+
+In this appendix, it is possible to see the complete specification of the \jml\ abstract syntax. The appendix is divided in several sections, each one containing a complete block of the specification. Furthermore, each type is commented in order to understand what it represents. This AST is then converted, using the \textit{ASTGEN} (see \ref{chap4:sec:asts}) into \java\ and \vpp\ classes in order to be used within the specification. 
+
+\section{\jml\ Specifications}
+
+The abstract representation of \jml\ specifications assumes the possibility of existing more than one file, which means more than one class, or even nested classes. Thus, a \jml\ specifications can be represented as a sequence of \jml\ classes, as represented below.
+\lstset{style=AST}
+\lstset{language=VDM++}
+\medskip
+\begin{lstlisting}
+Specifications ::
+	class_list : seq of WrappedJmlClass
+	;
+\end{lstlisting}
+\medskip
+Each \jml\ class is composed by a package name, a refinement clause, the correspond type imports and by the class body itself.
+\medskip
+\begin{lstlisting}
+WrappedJmlClass ::
+	package : seq of char
+	refine : seq of char
+	imports_java : seq of Import
+	imports_jml : seq of ModelImport
+	class_val : Class
+	;
+\end{lstlisting}
+\medskip
+Each import is nothing more than a string. However, it is possible to have \java\ imports, for \java\ types, and \jml\ imports, for the \jml\ pure types.
+\medskip
+\begin{lstlisting}
+Import ::
+	import : seq of char
+	;
+
+ModelImport ::
+	model : bool
+	import : seq of char
+	;
+\end{lstlisting}
+\medskip
+Concerning the class, a \jml\ class can be represented by the \vdm\ type presented below. A class is composed by an access definition, which represents the class visibility, a keyword representing the class kind (interface, class, etc), the class name, both the interface and class inheritance clause and the sequence of definition blocks (operations, etc).
+\medskip
+\begin{lstlisting}
+Class ::
+  access : AccessDefinition
+  kind : ClassKind
+  identifier : Identifier
+  inheritance_clause : [ClassInheritanceClause]
+  interface_inheritance : [InterfaceInheritanceClause]
+  class_body : seq of DefinitionBlock
+  ;
+\end{lstlisting}
+\medskip
+A few types related to the class.
+\medskip
+\begin{lstlisting}
+ClassKind =
+	<CLASS> | <ABSTRACT> | <INTERFACE>
+	;
+
+InterfaceInheritanceClause ::
+	identifier_list : seq of Identifier
+	;
+
+ClassInheritanceClause ::
+	identifier_list : Identifier
+	;
+
+AccessDefinition :: 
+	scope  : Scope
+	;
+  
+Scope =
+  <PUBLIC> | <PRIVATE> | <PROTECTED> | <DEFAULT>
+  ;
+\end{lstlisting}
+\medskip
+A definition block can be an instance variable block, a value block (static variables), an invariant block, an operation block or other definitions, which represents the constructs at the \vpp\ side that do not have an association at the \jml\ side, and vice-versa.
+\medskip
+\begin{lstlisting}
+
+DefinitionBlock =
+	InstanceVariableDefinitions |
+	ValueDefinitions |
+	InvariantDefinitions | 
+	OperationDefinitions |
+	OtherDefinitions
+	;
+
+OtherDefinitions :: ;
+
+\end{lstlisting}
+\medskip
+
+\section{Instance Variables}
+In this section, the instance variables block is presented. It is possible to have both \jml\ and \java\ variables inside a specification.
+\medskip
+\begin{lstlisting}
+InstanceVariableDefinitions :: 
+	jml_variables : seq of Variable
+	java_variables : seq of Variable
+	;
+\end{lstlisting}
+\medskip
+Furthermore, each variable has a number of information fields, represented by the type below.
+\medskip
+\begin{lstlisting}
+Variable ::
+	access : AccessDefinition
+	model : bool
+	statickeyword : bool
+	final : bool
+	type : Type
+	identifier : Identifier
+	expression : [Expression]
+	;
+\end{lstlisting}
+
+\section{Values}
+
+A value in \jml\ a static variable, which corresponds to the \vpp\ value. Below, it is possible to see the abstract definition of values in \jml.
+
+A value definition block is a sequence of values.
+\medskip
+\begin{lstlisting}
+ValueDefinitions ::
+    value_list : seq of ValueDefinition
+	;
+\end{lstlisting}
+\medskip
+Each value has the following definition:
+\medskip
+\begin{lstlisting}
+ValueDefinition ::
+	access : AccessDefinition
+	static_mod : bool
+	final_mod : bool
+	shape: ValueShape
+	;
+	
+ValueShape ::
+	identifier : Identifier
+	type : Type
+	expression : Expression
+	;
+\end{lstlisting}
+
+\section{Invariants}
+
+The following definition represents invariants in \jml. It is possible to have a sequence of invariants, each one with a particular definition shown below.
+\medskip
+\begin{lstlisting}
+InvariantDefinitions :: 
+	invariant_list : seq of InvariantDefinition;
+
+InvariantDefinition ::
+	access : AccessDefinition
+	redundant : bool
+	predicate : Expression
+	;
+\end{lstlisting}
+
+\section{Operations}
+
+The operations block is composed by a number of operations, represented by a sequence.
+\medskip
+\begin{lstlisting}
+OperationDefinitions ::
+	operation_list : seq of OperationDefinition
+	;
+\end{lstlisting}
+\medskip
+
+Each operation is represented by a number of fields, already explained in chapter \ref{chapter4}.
+
+\medskip
+\begin{lstlisting}	
+OperationDefinition :: 
+	trailer : [MethodSpecifications]
+	access : AccessDefinition
+	pure : bool
+	statickeyword : bool
+	final : bool
+	returning_type : Type
+	identifier : Identifier
+	parameter_list : seq of Parameter
+	body : [Body]
+	;
+\end{lstlisting}
+\medskip
+
+AN operation can have new specifications or an extension to other specifications (through inheritance). There are three kinds of specifications: normal, behaviour and exceptional specifications.
+
+\medskip
+\begin{lstlisting}
+MethodSpecifications ::
+	specs : Specs
+	also  : Specs
+	;
+	
+Specs ::
+	list : seq of OperationTrailer
+	;
+
+OperationTrailer =
+	BehaviourSpec |
+	ExceptionalSpec |
+	NormalSpec
+	;
+\end{lstlisting}
+\medskip
+Each kind of specifications has a scope and a number of trailers (for example, pre-conditions).
+\medskip
+\begin{lstlisting}
+BehaviourSpec ::
+	privacy : Scope
+	list : seq of Trailers
+	;
+
+ExceptionalSpec :: 
+	privacy : Scope
+	list : seq of Trailers
+	;
+	
+NormalSpec :: 
+	privacy : Scope
+	list : seq of Trailers
+	;
+\end{lstlisting}
+\medskip
+There are five possible trailers allowed by \jml, listed below.
+\medskip
+\begin{lstlisting}	
+Trailers =
+	EnsuresClause |
+	AssignableClause | 
+	SignalsClause |
+	SignalsOnlyClause | 
+	RequiresClause
+	;
+\end{lstlisting}
+\medskip
+Each of the five possible trailers are described below. The common field between them is an expression, which will be explained further on.
+\medskip
+\begin{lstlisting}
+EnsuresClause ::
+	ensures_expression : Expression
+	;
+	
+RequiresClause ::
+	requires_expression : Expression
+	;
+	
+AssignableClause ::
+	assignable_list : seq of Identifier
+	;
+	
+SignalsClause ::
+	exception : Exception
+	predicate : Expression
+	;
+
+SignalsOnlyClause ::
+	reference_types : seq of ReferenceType
+	;
+\end{lstlisting}
+\medskip
+Below, one can see some useful types used above, and besides that, the representation of the body (as string) because this connections does not consider the connection between implementation of operations.
+\medskip
+\begin{lstlisting}
+ReferenceType = 
+	Identifier 
+	;
+
+Exception ::
+	type : ExceptionType
+	identifier : Identifier
+	;
+
+Body :: 
+	body : seq of char
+	;
+
+Parameter :: 
+	type : Type
+	identifier : Identifier
+	;
+\end{lstlisting}
+
+
+\section{Types}
+
+In this section, it is possible to see the representation of some of the types chosen to be used at the \jml\ side. Below, one can see those types.
+
+\begin{lstlisting}
+Type =
+	CharType |
+	BoolType |
+	EnumerationType | 
+	IntegerType |
+	FloatType |
+	MapValueToValueType | 
+	SetValueType |
+	SeqValueType |
+	ObjectType |
+	VoidType |
+	TupleType |
+	NatType |
+	ClassType |
+	ClassName
+	;
+\end{lstlisting}
+
+This first set of types represent \jml\ classes, which will be mapped from \vpp\ composite types.
+
+\begin{lstlisting}
+ClassName ::
+	id : Name;
+
+ClassType ::
+	id : Identifier
+	field_list : seq of Field;
+
+Field ::
+	id : Identifier
+	type : Type;
+\end{lstlisting}
+
+This set of types represent \jml\ types which will be mapped from \vpp\ simple types.
+
+\begin{lstlisting}
+NatType :: 
+	limit : nat;
+
+TupleType ::
+	vals : seq of Type;
+
+CharType :: ;
+
+BoolType :: ;
+
+IntegerType :: ;
+
+EnumerationType ::
+	enum_literal : EnumLiteral;
+
+FloatType :: ;
+\end{lstlisting}
+
+Finally, \vpp\ complex types can be mapped to the \jml\ types represented below.
+
+\begin{lstlisting}
+MapValueToValueType ::
+	dom_type : Type
+	rng_type : Type;
+
+SetValueType ::
+	type : Type;
+
+SeqValueType ::
+	type : Type
+	limit : nat;
+
+ObjectType :: ;
+
+ExceptionType ::
+    type : Identifier;
+
+VoidType :: ;
+\end{lstlisting}
+
+\section{Expressions}
+
+In this section, a number of \jml\ expressions are presented. This expressions are used to map from \vpp\ expressions, and are used in several parts of a specification, such as pre-conditions, invariants, etc.
+
+\begin{lstlisting}
+Expression = BracketedExpression |
+             IfExpression |
+			 UnaryExpression |
+			 BinaryExpression |
+			 ForAllExpression |
+			 ExistsExpression |
+			 OldName |
+			 NewExpression |
+			 Name |
+			 PostfixExpression |
+			 SetEnumeration |
+			 SequenceEnumeration |
+			 MapEnumeration |
+			 ApplyExpression |
+			 FieldSelectExpression |
+			 ArrayExpression |
+			 ThrowExpression |
+			 LiteralExpression |
+			 BlockExpression |
+			 ThisExpression |
+			 InstanceOfExpression |
+			 OldName
+			 ;
+\end{lstlisting}
+\medskip
+The following types represent the \textit{old} expression, the \textit{instanceof} expression and the \textit{this} expression.
+\medskip
+\begin{lstlisting}
+OldName ::
+	identifier : Identifier;
+
+InstanceOfExpression :: 
+	type : Type
+	expression : Expression;
+
+ThisExpression :: ;
+\end{lstlisting}
+\medskip
+Below, one can find types representing the \jml\ map enumeration, the sequence enumeration and the set enumeration.
+\medskip
+\begin{lstlisting}
+MapEnumeration ::
+	list : seq of MapLet;
+	
+MapLet ::
+	dom_val : Expression
+	rng_val : Expression;
+
+SequenceEnumeration ::
+	list : seq of Expression;
+
+SetEnumeration ::
+	list : seq of Expression;
+\end{lstlisting}
+\medskip
+The block expression represents the \jml\ type from which the \vpp\ let expression maps to. It has bind information and an expression. Furthermore, one can see definitions for an array expression and a throw expression.
+\medskip
+\begin{lstlisting}
+BlockExpression ::
+	bind : seq of ValueShape
+	return_expr : Expression;
+
+ArrayExpression ::
+	list : seq of Expression
+	;
+	
+ThrowExpression ::
+	exception : Identifier
+	params : seq of Parameter
+	;
+\end{lstlisting}
+\medskip
+Below, it is possible to see definitions for the apply expression, and the field select expression.
+\medskip
+\begin{lstlisting}
+ApplyExpression ::
+    expression : Expression
+	expression_list : seq of Expression
+	;
+
+FieldSelectExpression ::
+    expression : Expression
+	name : Name
+	;
+\end{lstlisting}
+\medskip
+The definitions present below represents the bracketed expression in \jml, and the if-then-else clause.
+\medskip
+\begin{lstlisting}
+BracketedExpression ::
+	expression : Expression
+	;
+	
+IfExpression ::
+	if_expression : Expression
+	then_expression : Expression
+	else_expression : Expression
+	;
+\end{lstlisting}
+\medskip
+The unary expression has an operator, defined further on, and an expression in which the operator will operate.
+\medskip
+\begin{lstlisting}	
+UnaryExpression ::
+	operator : UnaryOperator
+	expression : Expression
+	;
+\end{lstlisting}
+\medskip
+There are a number of unary operators allowed in \jml. One can increment or decrement the value of some expression. Furthermore, it is possible to use the unary plus and minus operators. Besides that, it is possible to use the not, old, absolute value, floor, domain, range, inverse, cardinality, power, head, tail, length and elements. Each one of this operators will have to respect the type of the expression in which they are being applied. 
+\medskip
+\begin{lstlisting}
+UnaryOperator =
+	<INCREMENT> | <DECREMENT> | 
+	<PLUS> | <MINUS> |
+	<NOT> | <OLD> | <ABS> |
+	<FLOOR> | <DOM> | <RNG> |
+	<INVERSE> | <CARD> | <POWER> |
+	<HD> | <TL> | <LEN> | <ELEMS>
+	;
+\end{lstlisting}
+\medskip
+The binary expression is similar to the unary expression, unless it has one more expression. The binary operators are explained further on.
+\medskip
+\begin{lstlisting}
+BinaryExpression :: 
+	lhs_expression : Expression
+	operator : BinaryOperator
+	rhs_expression : Expression
+	;
+\end{lstlisting}
+\medskip
+It is possible to chose from a number of operators. They are represented by the type below. 
+\medskip
+\begin{lstlisting}
+BinaryOperator = 
+	<MINUS> | <PLUS> | <MULTIPLY> |
+	<DIVIDE> | <REMAIN> | <LE> |
+	<L> | <G> | <GE> | <EQ> | <NE> |
+	<INSTANCEOF> | <LAND> | <LOR> |
+	<IMPLY> | <IMPLYBACK> | <EQUIV> |
+	<NOTEQUIV> | <MULEQ> | <DIVEQ> | 
+    <REMEQ> | <PLUSEQ> | <MINUSEQ> |
+	<SUBTYPE> | <MUNION> | <DOMRESTTO> |
+	<RNGRESTTO> | <COMP> | <INSET> |
+	<NOTINSET> | <UNION> | <INTER> |
+	<SUBSET> | <PROPERSUBSET> | <CONCAT>
+	;
+\end{lstlisting}
+\medskip
+Below, it is possible to see the definition of the quantification expressions \textit{forall} and \textit{exists}. They are similar in a way they both have quantifier declarations and an expression.
+\medskip
+\begin{lstlisting}
+ForAllExpression ::
+	bind_list : QuantifierDeclaration
+	expression : seq of Expression
+	;
+	
+ExistsExpression ::
+	bind_list : QuantifierDeclaration
+	expression : seq of Expression
+	;
+\end{lstlisting}
+\medskip
+Each quantifier declaration mentioned above can have a bound, a type and a sequence of variables.
+\medskip
+\begin{lstlisting}	
+QuantifierDeclaration ::
+	bound : [BoundModifiers]
+	type : Type
+	vars : seq of Identifier
+	;
+	
+BoundModifiers =
+	<NON_NULL> |
+	<NULLABLE>;
+	
+OldName ::
+	identifier : Identifier
+	;
+\end{lstlisting}
+\medskip
+From the definitions below, it is possible to see the definitions of the \textit{new} expression and the name expression, which can represent a method name, for example.
+\medskip
+\begin{lstlisting}	
+NewExpression ::
+	type : Type
+	expression_list : seq of Expression
+	;
+	
+Name ::
+	class_identifier : [Identifier]
+	identifier : Identifier
+	;
+\end{lstlisting}
+\medskip
+Below, a postfix expression is represented.
+\medskip
+\begin{lstlisting}
+PostfixExpression :: 
+	primary : seq of PrimaryExpressions
+	operation : PostfixOperation	
+	;
+
+PostfixOperation =
+	<INCREMENT> |
+	<DECREMENT>
+	;
+\end{lstlisting}
+\medskip
+Furthermore, a \jml\ primary expression is defined below.
+\medskip
+\begin{lstlisting}
+PrimaryExpressions ::
+	primary : PrimaryExpression
+	suffix : [PrimarySuffix]
+	;
+\end{lstlisting}
+\medskip
+Some \jml\ keywords are represented below.
+\medskip
+\begin{lstlisting}
+SuperKeyword :: ;
+ThisKeyword :: ;
+NullKeyword :: ;
+ResultKeyword :: ;
+OldKeyword :: ;
+NotAssignedKeyword :: ;
+StarKeyword :: ;
+ClassKeyword :: ;
+\end{lstlisting}
+\medskip
+The primary suffix in \jml\ can be one of four different types, listed below.
+\medskip
+\begin{lstlisting}
+PrimarySuffix =
+	ThisKeyword |
+	ClassKeyword |
+	SuperKeyword |
+	ExpressionsList
+	;
+\end{lstlisting}
+\medskip
+Moreover, one can see the definitions for the \jml\ primary expressions and the literal expression, responsible for the usage of literals such as natural numbers, etc.
+\medskip
+\begin{lstlisting}
+ExpressionsList ::
+    list : seq of Expression
+	       ;
+
+PrimaryExpression =
+    PrimaryExpressionLiteral |
+	PrimaryExpressionKeyword
+	;
+
+PrimaryExpressionLiteral ::
+    lit : Literal
+	;
+	
+LiteralExpression ::
+	lit : Literal
+	;
+	
+PrimaryExpressionKeyword ::
+    keyword : PrimaryExpressionOption
+	;
+\end{lstlisting}
+\medskip
+A primary expression can be one of the following types.
+\medskip
+\begin{lstlisting}
+PrimaryExpressionOption = 
+	NameId |
+	SuperKeyword |
+	ThisKeyword | 
+	NullKeyword |
+	ResultKeyword |
+	OldKeyword |
+	NotAssignedKeyword
+	;
+
+NameId ::
+    name : Identifier
+	;
+\end{lstlisting}
+\medskip
+
+\section{Literals}
+
+In this section, the definition of \jml\ literals can be found. As one can see below, there are a number of possible literals to use in \jml\ specifications. 
+
+\medskip
+\begin{lstlisting}
+Literal =
+	NumericalLiteral |
+	FloatLiteral |
+	EnumLiteral |
+	BooleanLiteral |
+	CharacterLiteral |
+	StringLiteral |
+	NullLiteral;
+\end{lstlisting}	
+\medskip
+Below, one can see definitions about enumeration literals, numerical and float literals.
+\medskip
+\begin{lstlisting}
+EnumLiteral	::
+	val : seq of char;
+	
+NumericalLiteral ::
+	val : nat;
+	
+FloatLiteral ::
+	val : real;
+\end{lstlisting}
+\medskip
+Furthermore, the definition of character and boolean literals is presented.
+\medskip
+\begin{lstlisting}
+BooleanLiteral ::
+	val : bool;
+	
+CharacterLiteral ::
+	val : char;
+\end{lstlisting}	
+\medskip
+Finally, it is presented the definition of string and null literals and the definition of an identifier, which is a sequence of characters (string).
+\medskip
+\begin{lstlisting}
+StringLiteral ::
+	val : seq of char;
+	
+NullLiteral :: ;
+
+Identifier = seq of char
+\end{lstlisting}
+
+
+
+
+% ********** End of appendix **********

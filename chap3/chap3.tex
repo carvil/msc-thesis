@@ -1,0 +1,328 @@
+% ********** Chapter 3 **********
+\chapter{Correlation Between \vpp\ and \jml}
+\label{chapter3}
+
+All through this chapter, the correlation between \jml\ and \vpp\ will be presented in a semantic perspective. Since the intention of the proposed connection is to map \vpp\ and \jml\ specifications in both  directions, a semantic comparison between those two specification languages must me carried through. Such comparison should be divided in logical items, in order to make sure that all the relevant constructs and features are correctly related in order to be possible a mapping between \vpp\ and \jml. For this purpose, two main items were selected, and are briefly explained below. Each of those items will be analysed through this chapter, in order to show the correlation between those two specification languages
+
+\begin{itemize}
+\item{\textbf{Types}} Since both \jml\ and \vpp\ have pre-defined types, the correlation between those types must be analysed, in order to correctly proceed to the mapping between them; 
+\item{\textbf{Constructs}} Each predefined type has its own constructs associated. Thus, for each type relation proposed above, its constructs should also be related in order to map them.
+\end{itemize}
+
+\section{\vpp\ types vs \jml\ pure types}
+\label{sec:types}
+
+In this section, the correlation between \vpp\ types and \jml\ pure types will be analysed. Furthermore, a mapping will be established between those types, taking into account the semantic meaning of each type. Moreover, the possible limitations of such mapping between types will be analysed in this section.
+
+There are two kinds of types in \vpp : basic and compound types. This dissociation between basic and compound types will be used in this section in order to help along the read process. 
+
+\subsection{Basic Types}
+
+The \vpp\ basic types will all have correspondence to \jml\ types. However, in order to have equivalence to the \vpp\ \textit{nat} type, a new type was created in \jml, named JMLNatType. This new type will receive as input to the constructor the natural number 0 or 1, depending if the mapping is being performed from a \textit{nat} or a \textit{nat1} type. The correlation between the types is as follows, in table \ref{chap3:tab:types}:
+
+\begin{table}[h!t!p!]\centering
+\begin{tabular}{| c | c |}
+\hline
+VDM++ type & JML type \\
+\hline
+\hline
+bool & boolean \\
+\hline
+nat & JMLNatType(0) \\
+\hline
+nat1 & JMLNatType(1) \\
+\hline
+int & JMLInteger \\
+\hline
+real & JMLFloat \\
+\hline
+char & JMLChar \\
+\hline
+token & JMLType \\
+\hline
+Quote & JMLEnumeration \\
+\hline
+\end{tabular}
+\caption{Comparison between types.}
+\label{chap3:tab:types}
+\end{table}
+
+As it can be seen from the table above, the \vpp\ simple types are completely mapped into \jml\ types. 
+
+\subsection{Compound Types}
+
+Concerning the compound types of \vpp, the correlation with the \jml\ types can be see from table \ref{chap3:tab:typescomp}. Again, there are new types created an the \jml\ side to deal with a number of translations. Those types are \textit{JMLClassType} and \textit{JMLTuple}.
+
+The JMLClassType was created to be mapped to the \vpp\ composite type. On the other hand, the JMLTuple was created to be mapped to the \vpp\ product type.
+
+\begin{table}[h!t!p!]\centering
+\begin{tabular}{| c | c |}
+\hline
+VDM++ type & JML type \\
+\hline
+\hline
+Composite & JmlClassType\\
+\hline
+Product & JMLTuple\\
+\hline
+Set & JMLValueSet\\
+\hline
+Seq & JMLValueSeq\\
+\hline
+Map & JMLValueToValueMap\\
+\hline
+\end{tabular}
+\caption{Comparison between compound types.}
+\label{chap3:tab:typescomp}
+\end{table}
+
+Record types in \vpp\ are converted into classes at the \vpp\ level, due to the fact that they have a number of fields with possible different types. Thus, whenever a record is created in \vpp, a \jml\ class is created where each field from the \vpp\ specification is converted into a instance variable. Furthermore, if the product type has an invariant, it can be translated into the instance invariant of the class.
+
+\section{Language Semantics}
+\label{chap3:langsem}
+
+\subsection{\vpp\ Pre-Condition vs \jml\ Requires Clause}
+\label{subsec:pre}
+
+Both the pre-conditions and the requires clause are used to specify what should hold before the invoked method or function starts its execution. They are therefore composed by a truth-value expression that can only refer to the inputs of the given method or function and to global variables in general in case of operations. If the expression evaluates to true, then it is possible to proceed with the execution, otherwise there will be a violation of the pre-condition and therefore the execution of the method is aborted. In fact, at the \vpp\ side it is possible to proceed with the execution of a function or method in which the pre-condition has evaluated to false, deactivating that option. However, disabling that option leads to a lack of guarantee about the results of the execution. It is possible that, for a number of inputs, a given method or function will abort its execution, because there are no conditions to validate that input.
+
+The behaviour of both referred constructs is similar. However, there are a number of items to compare, in order to build a proper mapping between those two constructs. First, the structure of both constructs will be presented, and their differences analysed.
+
+In \vpp, each method and function can only have one pre-condition. That pre-condition is composed by the keyword \textit{pre} followed by a \vpp\ expression whose type must be  boolean. Below, it is possible to see the syntactic form or the referred operator:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{pre} & Expression;\\
+\end{tabular}
+\end{center}
+
+The absence of the pre-condition leads to a default value of \textit{'true'}, meaning that each input for a given method or function is accepted.
+
+Concerning the \jml\ requires clause, as it can be seen above, its behaviour is similar to the \vpp\ pre-condition. Here is the syntactic form of this construct:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{requires} & Expression;\\
+\end{tabular}
+\end{center}
+
+One exception is that for each method, it is possible to specify not only one but a number of requires clauses. However, all the requires clauses are conjuncts in a single requires clause, so semantically it is the same as in \vpp. 
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{requires} & P;\\
+\textit{requires} & Q;\\
+\end{tabular}
+\end{center}
+
+It is the same as:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{requires} & P \&\& Q;\\
+\end{tabular}
+\end{center}
+
+When there is no requires clause defined, the default value is set to \textit{'true'} for a heavyweight specification and \textit{'not\_specified'} for a lightweight specification. Besides that, it is also possible to define the expression with another \jml\ construct called \textit{$\\$ 'same'}. However, the usage of this construct requires that the corresponding method is overriding another, in order to use the requires clause already specified in the overridden method. Otherwise, it is not possible to use such construct. Finally, there are more constructs to represent a pre-condition in \jml. Instead of writing the construct \textit{'requires'}, it is possible to use three other constructs: \textit{'requires\_redundantly'}, \textit{'pre'} and \textit{'pre\_redundantly'}. The semantic meaning of the construct \textit{'pre'} is the same as the \textit{requires clause}, however the \textit{'redundantly'} constructs are slightly different. Semantically, those constructs are meant to rewrite the existing requires clauses in a way that they would become readable from a user perspective. Moreover, if there is a requires clause P and a redundant requires clause PR, then the redundant clause follows from the requires clause, \ie, P implies PR:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{requires} & P;\\
+\textit{requires\_redundantly} & PR;\\
+\end{tabular}
+\end{center}
+
+Then, P $\Longrightarrow$ PR, \ie, whenever P is true, PR must be also true. If there are a number of redundant clauses, they are conjoint in one single redundant clause like the requires clause presented above.
+
+
+\subsection{Map \vpp\ Post-Condition to \jml\ Ensures Clause}
+\label{subsec:post}
+
+As in the previous subsection, the \vpp\ post-condition and the \jml\ ensures clause are similar. They are used to specify what should hold after the execution of the corresponding method or function. For that purpose, they use an truth-value expression that can access the input of the method or function, the current value of the global variables, the result identifier and the old value of global variables (if it is a method and not a function). If a given method or function finish its execution without throwing an exception (subsection \ref{subsec:exception}), then the post-condition must hold. If the post-condition holds, the method or function ends correctly, otherwise the post-condition was violated and thus the execution is aborted.
+
+Below, a comparison is provided between the two referred constructs concerning a number of items, in order to guarantee that the mapping between them can be performed. As it can be seen above, the two constructs are semantically very similar. This is also the case syntactically. The syntactic form of the \vpp\ construct \textit{post} is:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{post} & Expression;\\
+\end{tabular}
+\end{center}
+
+The expression can be any \vpp\ expression as long as it returns a truth value. In case the construct is missing, the default value \textit{'true'} is used. Finally, only one post-condition is allowed for each method or function.
+
+The syntactic form of the \jml\ construct \textit{ensures} is:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{ensures} & Expression;\\
+\end{tabular}
+\end{center}
+
+As in the \vpp\ post-condition, the expression can be any \jml\ expression that returns a truth value. Concerning the default value when the construct is missing, it depends if one is defining a lightweight or heavyweight specification. If one is specifying a lightweight specification, the default value is \textit{'not\_specified'}; otherwise, the default value is set to \textit{'true'}. In oppose to \vpp, each method in \jml\ can have a number of post-conditions. However, this is the same as having only one post-condition where all the ensures clauses are conjuncts in a single ensures clause. In essence, if one has the following two ensures clauses:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{ensures} & P;\\
+\textit{ensures} & Q;\\
+\end{tabular}
+\end{center}
+
+They are conjoint in order to form one ensures clause:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{ensures} & P \&\& Q;\\
+\end{tabular}
+\end{center}
+
+As in the pre-condition, there are more constructs in \jml\ to represent an ensures clause: \textit{'post'}, \textit{'post\_redundantly'} and \textit{'ensures\_redundantly'}. The meaning of those constructs is analog to the one defined in subsection \ref{subsec:pre}.
+
+\subsection{\vpp\ Exception Clause vs \jml\ Exceptional Post-Condition}
+\label{subsec:exception}
+
+The two constructors presented in this section, the \textit{errs} and the \textit{signals} clauses, are the responsible for dealing with exceptional behaviour in VDM++ and JML, respectively. In order to connect them appropriately, their semantic and behaviour must be carefully analysed.\\
+In VDM++, the errs clause can be used to describe how an operation should deal with error situations. It provides the user with a clean way of separating the normal cases from the exceptional cases. Furthermore, this clause show exactly under which condition an error can occur and what are the consequences for the result of calling the operation, but does not give information about how exceptions are to be signalled.\\
+This \textit{errs} constructor should be followed by a list of conditions, each one describing a specific error situation. A condition is composed by a number of elements explained below:
+\begin{itemize}
+\item An identifier, illustrated by \textit{CONDi} (\textit{i} $in$ \{1,$\ldots$,n\}), which describes the kind of error that can be raised;
+\item An error pre-condition, represented by \textit{Ci} (\textit{i} $in$ \{1,$\ldots$,n\}), that describes under which condition the respective error should occur;
+\item An error post-condition, illustrated by \textit{Ri} (\textit{i} $in$ \{1,$\ldots$,n\}), which represents the consequences for the result of calling the correspondent operation.
+\end{itemize}
+Syntactically, the pre-condition, the post-condition and the referred clause are different, and are defined using different constructs, however semantically they are in some specific way conjoined into one pre-condition and one post-condition as it can be seen below.\\
+Considering an operation with pre-condition \textit{Pre}, a post-condition \textit{Post} and an \textit{errs} clause, the real pre-condition of the operation will be:
+
+\begin{center}
+\begin{tabular}{ccccccc}
+\textit{Pre} & $\lor$ & \textit{C1} & $\lor$ & $\ldots$ & $\lor$ & \textit{Cn}\\
+\end{tabular}
+\end{center}
+
+And the real post-condition of the operation will be:
+
+\begin{center}
+\begin{tabular}{ccccccc}
+\textit{Post} & $\land$ & (\textit{C1} $\Rightarrow$ \textit{R1}) & $\land$ & $\ldots$ & $\land$ & (\textit{C1} $\Rightarrow$ \textit{R1})\\
+\end{tabular}
+\end{center}
+
+If the \textit{errs} constructor is not used, then the pre- and post-conditions will be themselves, and the conjunctions mentioned above will not take place.\\
+In \jml, the \textit{signals} clause is responsible for specifying the exceptional post-condition, \ie, the property which is guaranteed to hold at the end of a method invocation when this method terminates abruptly by throwing an exception \cite{leavens-etal07}.
+Note that this clause specifies under which conditions a certain exception may possible be thrown but when a certain exception must me thrown. For this specific situation, one should use other construct provided by \jml, named \textit{signals\_only}.\\
+As one can see from above, the \textit{signals} clause is composed by the construct name followed by an exception \textit{e} of type \textit{E} and finally a predicate \textit{P}.\\
+The above syntactic form of the \textit{signals} clause is also equivalent to the following syntactic form, which will be useful for further explanation below:
+
+\begin{center}
+\begin{tabular}{lll}
+\textit{signals} & (java.lang.Exception e) & ((e \textit{instanceof} E) $\Rightarrow$ R)\\
+\end{tabular}
+\end{center}
+
+The semantics of this constructor is presented below.\\
+When a given method with a \textit{signals} clause associated terminates abnormally, throwing an exception of type \textit{E}, then in the final state of the exception object \textit{E} the predicate \textit{P} must hold \cite{leavens-etal07}.\\
+Moreover, there are some other restrictions about the evolved types and variables. The Exception \textit{E} must be a subclass of the Java class Exception (java.lang.Exception) and the variable e is bound in the predicate \textit{P}.\\
+In case the Exception \textit{E} is an exception that does not inherit from java class RuntimeException (\ie\ checked exception), then it must be one of the exceptions listed in the throws clause of the method, or a superclass or subclass of such declared exception.\\
+Beyond the semantic presented above, there are two more possible situations evolving the \textit{signals} clause which semantics and behaviour must be explained: the absence of the clause and the presence of more than one clause referring to the same method.\\
+Beyond the semantic present above, there are two more possible situations evolving the \textit{signals} clause which semantics and behaviour must be explained: the absence of the clause and the presence of more than one clause referring to the same method.\\
+The absence of the \textit{signals} clause leads to a default behaviour. If the specification is a lightweight specification, it is used the default value \textit{not\_specified}. This means that there is no treatment if the method ends abnormally. Otherwise, if the specification is a heavyweight specification, the default value for the \textit{signals} clause is:
+
+\begin{center}
+\begin{tabular}{lll}
+\textit{signals} & (Exception) & \textit{true}\\
+\end{tabular}
+\end{center}
+
+Finally, if there are several \textit{signal} clauses related to the same method, \ie:  
+
+\begin{center}
+\begin{tabular}{lll}
+\textit{signals} & (E1 e) & P1;\\
+ & $\ldots$ & \\
+\textit{signals} & (En e) & Pn;\\
+\end{tabular}
+\end{center}
+
+This means that those clauses will be merged into one clause, and its predicate \textit{P} will be a conjunction of all predicates of the different \textit{signal} clauses:
+
+\begin{center}
+\begin{tabular}{ccc}
+\textit{signals} (Exception e) & ((e \textit{instanceof} E1) $\Rightarrow$ P1) & $\&\&$ \\
+ & $\ldots$ & $\&\&$ \\
+ & ((e \textit{instanceof} En) $\Rightarrow$ Pn) & \\
+\end{tabular}
+\end{center}
+
+\subsection{Map \vpp\ Invariant to \jml\ Invariant}
+
+Invariants are properties in the form of expressions that must be preserved in order to guarantee the consistency of the model. They represent universal properties over the model that restricts its domain in order to avoid malfunction or inconsistency. Both \vpp\ and \jml\ allow the usage of invariants, however with a number of differences that will be explored along this subsection.
+
+In \vpp, invariants can be used either combined with type definitions or associated to instance variables. Either way, they are meant to limit the possible values allowed by the type or variables in which the invariant refers to. However, the syntactic form of the invariants related to types is different of the one used for instance variables. The syntactic form of the \vpp\ invariants related to types can be found below:
+
+\begin{center}
+\begin{tabular}{llll}
+\textit{inv} & \textit{pattern} & $==$ & \textit{expression};\\
+\end{tabular}
+\end{center}
+
+The \textit{pattern} is used to match to a value of a particular type. It can be an identifier or an explicit value and it is used to create a scope to the invariant. The \textit{expression} can be any \vpp\ expression build over the \textit{pattern} that returns a truth value. Each \vpp\ type can have one invariant, and to use the invariant of a particular type \textit{T} elsewhere, it can be used through the expression \textit{inv\_T}. If there is no invariant associated to a type, the default value is set to \textit{true}, which means that the domain of the correspondent type is not limited, allowing all it possible values. Below, one can see the syntactic form of \vpp\ invariants related to instance variables:
+
+\begin{center}
+\begin{tabular}{ll}
+\textit{inv} & \textit{expression};\\
+\end{tabular}
+\end{center}
+
+Inside the instance variables block, one can define a number of invariants that can define properties over the instance variables declared inside the referred block. Unlike the invariant expression within the type information, these invariants do not need to define a pattern in order to be used in the invariant expression; it uses directly instance variables inside the expression to formulate the desire properties. Furthermore, the overall invariant of a \vpp\ class is a conjunction between the invariants of the superclass and the invariants of the class. If a given class has a number of invariants and one wants to access the complete invariant of the class, it is possible to use a built-in operation called \textit{inv\_classname}. In case of absence of invariants, the instance variables are not limited and thus it is possible to use all the values its types allow to be used. Finally, \vpp\ does not use access modifiers connected to invariants. Thus, each invariant can specify properties from public, private and protected instance variables all together. 
+
+In \jml, invariants are properties that have to hold in all visible states \cite{leavens-etal07} of a class. However, \jml\ distinguish between two different kinds of invariants: static and instance invariants. Static invariants may only refer to static fields of an object and instance invariants may refer to both static and non-static fields \cite{leavens-etal07}. Besides the static construct, each invariant have an access modifier associated. Each invariant can be public, private, protected or have the package visibility if they do not have any of the others access modifiers. As a consequence, each invariant can only use fields or pure methods with at least the same visibility as the invariant. Furthermore, all the invariants must be preserved regardless their access modifiers. This means that, for example, a public method must preserve a private invariant. Below, it is possible to see the syntactic form of a \jml\ invariant:
+
+\begin{center}
+\begin{tabular}{lll}
+\textit{modifiers} & \textit{invariant\_keyword} & expression;\\
+\end{tabular}
+\end{center}
+
+The \textit{modifiers} are an optional field and it is possible to have a number of them. There is a number of possibilities, however for the purposes of this work it will be considered the following: public, protected, private, abstract, static and final. For further details about all the possible options and access rules see \cite{leavens-etal07}. Concerning the invariant keyword, like the pre and post-conditions, it is possible to have both \textit{invariant} and \textit{invariant\_redundantly}. The expression can be any \jml\ expression which returns a truth value. In order to proceed with further explanations, three different concepts, that will be used in this subsection, will be explained: assuming, establishing and preserving an invariant. The definitions as in \cite{leavens-etal07} are presented below.
+\begin{description}
+\item{\textit{Assuming an invariant}} If the invariant must hold in the pre-state of a method or constructor, then that method or constructor assumes the invariant;
+\item{\textit{Establishing an invariant}} If the invariant must hold in the post-state of a method or constructor, then that method or constructor establishes the invariant;
+\item{\textit{Preserving an invariant}} If the invariant is both assumed and established by a method or constructor, then that method or constructor preserves the invariant.
+\end{description}
+\jml\ invariants should also hold in an exceptional situation, \ie, when a method or constructor terminates abnormally and throws and exception. Thus, methods and constructors should preserve and establish invariants both in normal and exceptional behaviour. This means that both post-conditions and exceptional post-conditions clauses will implicitly include the invariants. Moreover, under the referred conditions, if a method or constructor violates the invariant in case of abrupt termination, one will typically try to strengthen the pre-condition or weaken the invariant in order to deal with the exceptional behaviour \cite{leavens-etal07}. If a method is pure, automatically preserves the invariants.
+
+In an inheritance perspective, a given class will inherit all the visible invariants from its superclass or superinterfaces. The inherited invariants are composed only by the instance invariants. The static invariants are related to a specific class and should not be passed through. 
+
+This notion of static and instance invariants is also present in \vpp\ as it was explained above. However, \jml\ invariants have access modifiers which are not present in \vpp. Thus, in order to maintain the semantic of such constructs, it will be require at the \vpp\ level to have invariants separated by the access modifiers of the instance variables used for the formulation of properties. For example, the user should not specify an invariant both using public and private variables; such an invariant should be split in two invariants, one related to the public variable and other to the private variable, otherwise, the semantic would be lost. Furthermore, if one at the \vpp\ level define such an invariant, both with public and private variables, when moving such invariant to the \jml\ side, it would result in an error.
+
+When there is no invariant defined in a class, the default value is true. On the other hand, if there are more than one invariant, the resulting invariant is a conjunction of all invariants of the class. 
+
+Finally, unlike \vpp, \jml\ does not have type invariants. However, a type in \vpp\ is equivalent to a class or type in \jml. If the \vpp\ type in question is a pre-built type in \vpp, then it corresponds to a type in \jml. From that fact, results two possibilities: 
+\begin{itemize}
+\item Create a new class extending the correspondent type defined in \ref{sec:types} with the invariant;
+\item Instantiate the invariant for each variable that uses the correspondent type or create a subclass of the type being used at the \jml\ side containing the invariant and each variable that uses the \vpp\ type will use at the \jml\ side the new class created as type. 
+\end{itemize}
+
+In detail, if the type is defined by the user as a record, then it corresponds to a class in \jml. Thus, the associated invariant is semantically equivalent to a class invariant, and can be added to the created class representing the record as an instance invariant. If the type is a pre-built type in \vpp, then there are two options. One option is to instantiate the invariant for each variable of the type that contains the invariant. This means that the type invariant will become an instance invariant over the specific variables. However, if there are a number of variables using the specific type, there will be the same number of invariants at the \jml\ side. Thus, there will be repeated information in order to preserve the invariant. Other possibility is to extend the current defined types in \jml\ to be mapped to \vpp. For example, if there is a type at \vpp\ side named \textit{A}:
+
+\begin{center}
+\begin{tabular}{lll}
+\textit{A} & $=$ & \textit{set of nat};\\
+\end{tabular}
+\end{center}
+
+It would be mapped to a \textit{JmlValueSet}. However, if a new class is created (\eg, named \textit{JmlValueSetExtended}) as an extension of the \textit{JmlValueSet} (\ie, a subclass of), and the invariant is added to that class, then the type \textit{A} would be mapped to \jml\ not as a \textit{JmlValueSet} but as a \textit{JmlValueSetExtended}. Due to the fact that the new type only adds a new invariant imposed by the type invariant at \vpp\ level, the semantic meaning of the type wil be maintained.
+
+
+\subsection{Map \vpp\ External Clause to \jml\ Assignable Clause}
+
+The external clauses in \vpp\ list a number of variables that a given function or operation will manipulate along its execution. With this clause, it is also possible to limit the usage of the variable by choosing to read it only, or read and write. However, the externals clause can only be used within an implicit style.
+
+The assignable clause in \jml\ lists the locations the operation can assign during its execution. Thus, the operation can only manipulate the information contained within that name space. 
+
+As it can be seen from both definitions, both the externals and the assignable clause are similar, and it is possible to map them in both ways.
+
+When moving from \vpp\ to \jml, all the external clauses names will be moved to the correspondent assignable clause, maintaining the semantic value of the construct. On the other hand, when moving from \jml\ to \vpp, an assignable clause can only be moved into an implicit function or operation. If that happens, the assignable list will be mapped into an externals clause, with the write permissions. This way, the semantic value of both operators is maintained when using them within this mapper.  
+
+
+
+
+% ********** End of chapter **********

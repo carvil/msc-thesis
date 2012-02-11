@@ -1,0 +1,100 @@
+% ********** Chapter 4 **********
+\chapter{Tool considerations: preliminary design}
+\label{sec:chapter4}
+
+This chapter aim to give a complete description of the behaviour of this connection. Thus, a description of each part of this connection will be given and the interaction with the users will be explored. In order to better understand this connection, it will be decomposed into well defined logical components. Each component will have its own interfaces defined in order to understand how the communication between those components works. Together with the referred explanation, this connection will also be explained through figures of each component, with particular emphasis on the component describing the mapper between \vpp\ and \jml.
+
+\section{Overview}
+
+In order to create this connection, it is expected to specify all its components in \vpp\ and then use the VDMTools Java code generator to create the correspondent \java\ classes from the \vpp\ specification. After this process, the \java\ classes will be gathered in an eclipse plugin (chapter \ref{chapter4}) and the connection will be finally built. However, what is possible or not to specify using \vpp\ should be explored, in order to understand what components should be built using other technologies and what components should be specified using \vpp. 
+
+This connection conceptually evolves the translation of both \vpp\ and \jml\ specifications into \jml\ and \vpp\ specifications, respectively. In order to perform this, the usage of syntactic analysis is of great importance. Each specification, within a file, should be analysed syntactically, \ie, parsed into an intermediate structure. This is performed by two structures called scanner and parser. The scanner is a lexical analyser which creates tokens (categorized blocks of text) from a sequence of inputs and is used by the parser in order to assign semantic value to the input sequence. As the parser reads input sequences, it will build a structure suitable for further treatment. This structure is known as \writeterm{Abstract Syntax Tree} (AST\label{sym:AST}). However, this AST must be built depending on the meaning of each construct of the language being parsed. This means that each production in the parser should have the correct information with respect to the correspondent construct being parsed. This way, each node of the AST will gather information of the construct being parsed. This structure and the associated building process are explained in section \ref{sec:component1} and they compose the first component of this connection. 
+
+Afterwards, the correspondent AST structure should be mapped into another AST structure representing the specification language one wants to move to. This means that if one wants to move from \vpp\ to \jml\ (or vice-versa), the resulting AST from parsing the \vpp\ (\jml) file should be mapped into another AST representing \jml\ (\vpp). This conversion between ASTs compose the second component of this connection and it is explained in detail in section \ref{chapter4:sec:mapper}.
+
+The resulting ASTs from the mapper briefly explained above contain all the abstract syntax of the correspondent specification languages, \ie, they contain all the information which is independent of the concrete syntax of a language. However, in order to have the final output files, those ASTs should be pretty printed to the correspondent syntax of the specification language in question. This means that both \jml\ and \vpp\ abstract syntax trees should have operations to pretty-print the abstract syntax to the concrete syntax of the correspondent language. The pretty-print of the ASTs corresponds to the third and final component of this connection and it is explained in detail in section \ref{chapter5:sec:pp}.
+
+Concerning the user interaction with this connection, it is expected that the user interacts with it in the following specific situations:
+\begin{itemize}
+\item At the beginning, selecting the desired specifications to be used inside the proposed mapper;
+\item Whenever the user wants to move a specific class from one specification language to another. At this point, the user will be briefed with a \textit{log} file and eventually some decisions to be made manually (details in section \ref{chapter5:sec:mapper});
+\item At the end, saving or not the state of the project in order to be used in further opportunities.
+\end{itemize}
+
+The main schema of this connection can be seen on figure \ref{chapter5:pic:connectionschema}. All the components that will be explained in the sections below can be seen in this figure.
+
+\begin{figure}
+\begin{center}
+\resizebox{1.2\textwidth}{!}{\includegraphics{chap4/mapperoverview.ps}}
+\end{center}
+\caption{Connection schema}
+\label{chapter5:pic:connectionschema}
+\end{figure}
+
+
+\section{Parsing and AST generation}
+\label{sec:component1}
+
+This component should be partially specified and partially implemented outside the specification. The reason behind this statement is that there are parsers already defined for \vpp\ and \jml. Thus, there is no need to re-implement the correspondent parsers. However, an interaction between the parsers and the proposed connection should be explored in order to define the correct interfaces to perform the communication between them. In the following subsections, an analysis of the correspondent interfaces with the parsers will be carried through in both sides of this connection. In addition, the requirements specification and the parts which will not be specified will be pointed out in this component, in order to understand how this component will operate.
+
+\subsection{\vpp\ side}
+
+At the \vpp\ side, the Overture parser will be used. This parser allows one to retrieve the relevant information, which is the ASTs. With this functionality, one can give \vpp\ specifications as input to the parser, and retrieve a forest of ASTs representing the abstract syntax of those input files, as it can be seen from figure \ref{chapter5:pic:connectionschema} (parser and AST generation component).
+
+At this point, it is possible to parse using the Overture parser a number of \vpp\ files and retrieve the correspondent ASTs. Thus, there is no need of specifying this part of the first component.
+
+\subsection{\jml\ side}
+
+As it can be seen from section \ref{notyetdefined}, the forth version of the \jml\ tools will be used for the sake of simplicity and compatibility. A \jml\ parser is included on this set of tools, and it will be used to parse \jml\ input files and build ASTs representing the input files. However, this is not a straight forward process as in the \vpp\ side. From chapter \ref{chapter3}, it is possible to understand that this is a limited connection. It is intended to be a prototype proof-of-concept connection between subsets of those two specification languages with a solid basis with special attention concerning future extensions of it. Following this principle, the current ASTs retrieved by the \jml\ parser cannot be used directly. The presence of information about constructs not considered in this first version of this connection should not exist, to simplify the mapping between the ASTs from \jml\ and \vpp. Thus, a transformation of the retrieved ASTs should be carried through in order to transform them into ASTs considering only the used constructs. This comprehends two steps:
+\begin{itemize}
+\item Creation of abstract syntax types representing the considered \jml\ types, with special attention to future extensions;
+\item Converting the nodes of the retrieved ASTs from the \jml\ parser to the new constructs created in the previous step.
+\end{itemize}
+The parser and AST generation component from figure \ref{chapter5:pic:connectionschema} shows schematically the intention of this component at the \jml\ side.
+
+The first item presented above suggests a creation of abstract syntax types representing \jml. This process evolves the use of a tool designed for the Overture project. The tool is called \textit{ASTGEN} and from \vdm\ types representing a language it generates \java\ classes representing those types. Thus, the first step evolves the specification of an abstract representation of \jml, \ie, a representation with no \textit{syntactic sugar}, by means of \vdm\ types. In this file, only the considered constructs from \jml\ will be designed and if ones wants to extend the subset of \jml\ it will specify the new constructs in this file, and consider the generated \java\ classes in the next item, explained below.
+
+The second step evolves the conversion between ASTs. As it can be seen above, the ASTs retrieved by the \jml\ parser contains the complete \jml\ constructs from the input files. In case some of those constructs are not considered yet in this connection, they should be ignored to avoid excess of information and complexity when mapping ASTs. Thus, the overall goal of this step is to visit each node of the ASTs and:
+\begin{itemize}
+\item If the construct present on the node is considered in this connection, it will be replaced by the correspondent one generated as a \java\ class in the previous steps;
+\item If the construct is not yet considered in this connection, it will be replaced by a null keyword.
+\end{itemize} 
+For extension purposes, if one wants to expand the subset of considered constructs in a future stage, one have to:
+\begin{itemize}
+\item Write the abstract syntax of the construct as a \vdm\ type inside the abstract syntax file representing \jml ;
+\item In the ASTs converter, one will change the visitor in order to write the correct construct in the right place instead of null.
+\end{itemize}
+In short, in this step the abstract syntax of \jml\ will need to be specified. Concerning all the other steps explained above, they will be implemented in \java.
+
+\section{Mapper between \vpp\ and \jml}
+\label{chapter5:sec:mapper}
+
+After completing the previous steps, one will have ASTs representing input files. In order to map specifications both from \vpp\ and \jml, a mapper should be defined. This mapper should be able to convert \vpp\ ASTs into \jml\ ASTs and vice-versa. In virtue of the ASTs store all the relevant information, that information should be converted to other ASTs representing the target language. However, such conversion should respect the semantic rules defined along this thesis, in order to maintain the semantic value of the languages.
+
+Such a mapper should allow one to move freely from \vpp\ to \jml\ and vice-versa, \ie, one should convert specifications as their needs. Furthermore, there should be a state in this mapper in order to maintain the users changes along the usage of this mapper to prevent the user to repeat steps each time the mapper is used. Thus, this mapper should work as a project-based component, in which a user can save the current state of the mapper in order to re-use it in a point in time from the same point. 
+
+As it can be seen from figure \ref{chapter5:pic:connectionschema}, there are four entities in the mapper component: \vpp\ \textit{classes}, \jml\ \textit{classes}, \textit{state information} and \textit{control panel}. The first two entities, which are the \vpp\ and \jml\ classes, represent the current classes that are respectively at the \vpp\ and at the \jml\ side. For each class present in one of those two sides, it is possible to move to the other way, and return to the same side as many times as the user wants. These two entities are just a representation of the information of the mapper, provided by another entity named \textit{state information}. In this entity, the current information of the project is yielded inside a structure to be specified. This information is based on the input files (\vpp\ or \jml\ files), on the changes the user has produced inside the specification files and on the current state of the mapper, \ie, which classes has been mapped from one side to another. This structure will be responsible to gather all this information and save it for further work. Finally, the last entity named \textit{control panel} is the one responsible for the interaction with the user when one wants to move one class from one side to another. The purpose of the \textit{control panel} is:
+\begin{itemize}
+\item to inform the user about potential constructs being used that are not being considered by the mapper;
+\item to inform the user about potential semantic losses when moving from one side to another;
+\item to ask for help from the user in order to make decisions.
+\end{itemize}
+This entity will work both as a \textit{log} file of the connection and also as an enquire to the user in order to make decisions. This is an important step of the mapper due to the fact that this connection will have limitations, thus the user must be informed about them and, if needed, interview. In this component, there will be a need of specify:
+\begin{itemize}
+\item The state structure in order to hold \textit{state information};
+\item The mapper between \vpp\ ASTs and \jml\ ASTs;
+\item The \textit{control panel} and its interactions with the mapper.
+\end{itemize}
+In order to ease the user interaction with this connection, a \textit{Graphical User Interface} (GUI) should be designed. However, this will certainly be apart from the specification. As a consequence of the specification being code generated to \java\ in a future stage, the GUI should also be designed in \java.
+
+\section{Pretty-printing of ASTs}
+\label{chapter5:sec:pp}
+
+After mapping \vpp\ and \jml\ specifications, one has ASTs with the abstract syntax of the corresponding languages. The information is yielded correctly inside those structures, however there is a need of transforming such information into the concrete syntax of the specification languages, in order to have the output files. Thus, there should exist a \textit{pretty-printer} both for \vpp\ ASTs and \jml\ ASTs. This \textit{pretty-printers} are not yet specified, thus there is a need of specifying them in order to print out the output files.
+
+The pretty-printers will be specified over the abstract syntax types defining \vpp\ and \jml, \ie, they will be built over the \vdm\ types defining all the considered constructs of both languages.
+
+
+
+
+% ********** End of chapter **********

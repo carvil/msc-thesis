@@ -1,0 +1,37 @@
+% ********** Coonclusion Chapter **********
+\chapter{Conclusion}
+\label{sec:chapterconclusion}
+
+Along this chapter, the conclusion will be presented. Besides the achievements showed in section \ref{conc:achi}, a number of suggested items as future work is presented in section \ref{sec:chapterConclusion:futurework}.
+
+\section{Achievements}
+\label{conc:achi}
+
+There were two main goals at the beginning of this project, which were exploring the subsets where a connection between \vpp\ and \jml\ was possible and developing a prototype proof-of-concept of such connection. Thus, both goals were achieved at the end of this project. It was possible to find subsets of both languages, explore the limitations within that subset and build the specification of the bidirectional mapper between \vpp\ and \jml. 
+
+Although the mapper is specified, there is work to be done in extending and upgrading it, as suggested in section \ref{sec:chapterConclusion:futurework}, thus this work should be seen as a starting point for extending this connection.
+
+Due to time limitations, it was not possible to present related work. Even though, it would be of interest explore the possibilities of connecting \vpp\ with \textit{SpecSharp}, which is a specification language for the programming language C Sharp.
+
+\section{Future Work}
+\label{sec:chapterConclusion:futurework}
+
+Although the amount of work accomplished concerning this connection between \vpp\ and \jml, there are a number of items to finish and to build in order to improve the quality of this tool. Thus, it is suggested to extend the mapper with the following items:
+
+\begin{itemize}
+\item In order to be able to use this tool in the scope of the Overture Project, it is necessary to code generate the specification of the mapper into \java\ and assemble the sources in an Eclipse plugin;
+\item The pretty-printers of the ASTs both from \vpp\ and \jml\ should be developed in order to be able to easily understand the output retrieved by the mapper. This should be performed in \java, due to its simplicity;
+\item In order to be able to connect the \jml\ parser with this connection, it is necessary to build a visitor pattern over the \jml\ AST retrieved by the \jml\ parser in order to be able to have the AST converted into the AST presented in this thesis (appendix \ref{appendix:jmlast});
+\item After developing an Eclipse plugin of the tool, a Graphical User Interface should be developed in order to ease the interaction of the tool by its users;
+\item At the specification level, it should be specified a component responsible for gathering information about :
+\begin{itemize}
+\item potential constructs being used that are not being considered by the mapper;
+\item potential semantic losses when moving from one side to another.
+\end{itemize}
+It should be possible to inform the user, by means of a log file, about the situations referred above. 
+\item The considered subset of both \jml\ and \vpp\ should be extended in order to allow more features to be mapped in both directions. Thus, the theoretical exploration made along this thesis should be extended, and possibly improved in order to give precise information to the user of this mapper;
+\item A connection between this mapper and a \java\ code generator would be advantageous in a way that should be possible to have concrete \java\ implementations being connected to \jml\ specifications;
+\item An explanation of the possible expressions in this map should be provided, and the constructs associated to each type. This would be an advantage to the possible users of this mapper.
+\end{itemize}
+
+% ********** End of chapter **********

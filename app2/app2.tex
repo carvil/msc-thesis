@@ -1,0 +1,3249 @@
+\chapter{Specification of the VDM++ to JML Mapper}
+\label{appendix2}
+
+
+\section{Mapper from \vpp\ to \jml}
+
+Below, one can find the types and instance variables being used by the mapper.
+\lstset{language=VDM++}
+\lstset{style=mystyle}
+\bigskip
+\begin{lstlisting}
+class Vdm2Jml
+
+types
+
+public ClassId = seq of char;
+public TypeInfo = map ClassId to JmlType;
+public Information ::
+  field_list : seq of JmlField
+  invariant  : [JmlExpression];
+
+instance variables
+
+public hold_type_info : map ClassId to TypeInfo;
+
+public interfaces_list : set of ClassId;
+
+public classes_list : set of ClassId;
+
+public to_class : map ClassId to Information;
+
+operations
+
+------------------------------------------------
+-- MULTIPLE INHERITANCE ------------------------
+------------------------------------------------
+
+public init :
+  OmlSpecifications ==>
+  JmlSpecifications
+init(specs) ==
+  if preprocess(specs) 
+  then return eliminateMI(specs)
+  else return build_jml(specs);
+	 
+	 
+public eliminateMI : 
+  OmlSpecifications ==>
+  JmlSpecifications
+eliminateMI(specs) == 
+  if canProceed(specs)
+  then (eliminate(specs);
+        build_jml(specs))
+  else return new JmlSpecifications([]);
+
+
+public canProceed : 
+  OmlSpecifications ==>
+  bool
+canProceed(specs) == 
+  let cl = specs.getClassList(),
+      s  = gatherInfo(cl)
+  in result(s);
+  
+  
+public result :
+  seq of bool ==>
+  bool
+result(s) ==
+  let c = countFalses(s)
+  in if c > 1
+     then return false
+	 else return true;
+
+
+public countFalses :
+  seq of bool ==>
+  nat
+countFalses(s) ==
+  if len s = 0
+  then return 0
+  else if hd(s) = false
+       then return 1 + countFalses(tl(s))
+	   else return countFalses(tl(s));
+  
+  
+public gatherInfo :
+  seq of OmlClass ==>
+  seq of bool
+gatherInfo(s) == 
+  return [ gatherInfoHelper(s(i)) 
+    | i in set inds s & hasMI(s(i))];
+
+
+public gatherInfoHelper :
+  OmlClass ==>
+  bool
+gatherInfoHelper(c) ==
+  let body = c.getClassBody(),
+      name = c.getIdentifier()
+  in return gatherBlocksInfo(body,name);
+  
+  
+public gatherBlocksInfo :
+  seq of OmlDefinitionBlock *
+  seq of char ==>
+  bool
+gatherBlocksInfo(s,n) ==
+  let q = [ check(s(i),n) | i in set inds s]
+  in return land(q);
+
+
+public check : 
+  IOmlDefinitionBlock *
+  seq of char ==>
+  bool
+check(b,n) ==
+  cases true:
+    (isofclass(OmlOperationDefinitions,b))
+	  -> return checkOperations(b,n),
+	(isofclass(OmlInstanceVariableDefinitions,b))
+	  -> return checkInstanceVars(b),
+	(isofclass(OmlFunctionDefinitions,b))
+	  -> return checkFunctions(b),
+	others
+	  -> return true
+  end;
+
+
+public checkOperations :
+  OmlOperationDefinitions *
+  seq of char ==>
+  bool
+checkOperations(op,n) == 
+  let l = op.getOperationList(),
+      s = [ checkOperation(l(i),n) | i in set inds l]
+  in return land(s);
+
+
+public checkOperation :
+  OmlOperationDefinition *
+  seq of char ==>
+  bool
+checkOperation(op,n) ==
+  let s = op.getShape()
+  in cases true:
+       (isofclass(OmlExplicitOperation,s))
+	     -> return checkExplicitOperation(s,n),
+	   (isofclass(OmlImplicitOperation,s))
+	     -> return checkImplicitOperation(s,n),
+	   (isofclass(OmlExtendedExplicitOperation,s))
+	     -> return checkExtendedExplicitOperation(s,n),
+	   others 
+	     -> return true
+	 end;
+
+
+public checkImplicitOperation :
+  OmlImplicitOperation *
+  seq of char ==>
+  bool
+checkImplicitOperation(op,n) == 
+  let c = op.getIdentifier()
+  in if(n = c)
+     then return false
+     else return true;
+
+
+public checkExplicitOperation :
+  OmlExplicitOperation *
+  seq of char ==>
+  bool
+checkExplicitOperation(op,n) == 
+  let name = op.getIdentifier(),
+      body = op.getBody(),
+	  b = body.hasStatement()
+  in return 
+      not(name = n) and 
+	  not(b) and 
+	  ( body.getNotYetSpecified() or
+		body.getSubclassResponsibility());
+
+
+public checkExtendedExplicitOperation :
+  OmlExtendedExplicitOperation *
+  seq of char ==>
+  bool
+checkExtendedExplicitOperation(op,n) == 
+  let name = op.getIdentifier(),
+      body = op.getBody(),
+	  b = body.hasStatement()
+  in return 
+      not(name = n) and 
+	  not(b) and 
+	  ( body.getNotYetSpecified() or
+		body.getSubclassResponsibility());
+
+
+public checkInstanceVars :
+  OmlInstanceVariableDefinitions ==>
+  bool
+checkInstanceVars(iv) == 
+  let l = iv.getVariablesList()
+  in if len l = 0 
+     then return true
+	 else return false;
+
+
+public checkFunctions :
+  OmlFunctionDefinitions ==>
+  bool
+checkFunctions(fu) == 
+  let l = fu.getFunctionList(),
+      s = [ checkFunction(l(i)) | i in set inds l]
+  in land(s);
+
+
+public checkFunction :
+  OmlFunctionDefinition ==>
+  bool
+checkFunction(fd) ==
+  let s = fd.getShape()
+  in cases true:
+       (isofclass(OmlExplicitFunction,s))
+	     -> return checkExplicitFunction(s),
+       (isofclass(OmlImplicitFunction,s))
+	     -> return true,
+       (isofclass(OmlExtendedExplicitFunction,s))
+	     -> return checkExtendedExplicitFunction(s),
+       (isofclass(OmlTypelessExplicitFunction,s))
+	     -> return checkTypelessExplicitFunction(s),
+	   others
+	     -> return true
+	 end;
+
+
+public checkExplicitFunction :
+  OmlExplicitFunction ==>
+  bool
+checkExplicitFunction(f) == 
+  let body = f.getBody()
+  in if (body.hasFunctionBody() and 
+         (body.getNotYetSpecified() or 
+		  body.getSubclassResponsibility()))
+     then return false
+	 else return true;
+
+
+public checkExtendedExplicitFunction :
+  OmlExtendedExplicitFunction ==>
+  bool
+checkExtendedExplicitFunction(f) == 
+  let body = f.getBody()
+  in if (body.hasFunctionBody() and 
+         (body.getNotYetSpecified() or 
+		  body.getSubclassResponsibility()))
+     then return false
+	 else return true;
+
+
+public checkTypelessExplicitFunction :
+  OmlTypelessExplicitFunction ==>
+  bool
+checkTypelessExplicitFunction(f) == 
+  let body = f.getBody()
+  in if (body.hasFunctionBody() and 
+         (body.getNotYetSpecified() or 
+		  body.getSubclassResponsibility()))
+     then return false
+	 else return true;
+
+
+public eliminate :  
+  OmlSpecifications ==>
+  ()
+eliminate(specs) == 
+  (interfaces_list := updateInterfaceList(specs);
+   classes_list := updateClassList(specs))
+  ;
+
+
+public updateInterfaceList :
+  OmlSpecifications ==>
+  set of ClassId
+updateInterfaceList(specs) == 
+  let s = specs.getClassList(),
+      l = [ let q = s(i).getInheritanceClause(),
+	            k = q.getIdentifierList(),
+				t = getInterfaces(k,specs)
+			in t
+	      | i in set inds s & hasMI(s(i))],
+	  q = conc l
+  in return elems q;
+
+
+public getInterfaces :
+  seq of (seq of char) *
+  OmlSpecifications ==>
+  seq of (seq of char)
+getInterfaces(s,specs) == 
+  let c = specs.getClassList(),
+      l = [ s(i) | i in set inds s 
+	        & isInterfaceIn(s(i),c)]
+  in return l;
+  
+  
+public isInterfaceIn :
+  seq of char * 
+  seq of OmlClass ==>
+  bool
+isInterfaceIn(name,cls) == 
+  let c = getClass(name,cls)
+  in return gatherInfoHelper(c);
+  
+  
+public getClass : 
+  seq of char *
+  seq of OmlClass ==>
+  OmlClass
+getClass(n,s) == 
+  if len s > 0
+  then let head = hd(s) in 
+       if head.getIdentifier() = n
+       then return hd(s)
+       else getClass(n,tl(s))
+  else return new OmlClass();
+
+
+public updateClassList :
+  OmlSpecifications ==>
+  set of ClassId
+updateClassList(specs) == 
+  let s = specs.getClassList(),
+      l = [ let q = s(i).getInheritanceClause(),
+	            k = q.getIdentifierList(),
+				t = getClasses(k,specs)
+			in t
+	      | i in set inds s & hasMI(s(i))],
+	  q = conc l
+  in return elems q;
+  
+  
+public getClasses :
+  seq of (seq of char) *
+  OmlSpecifications ==>
+  seq of (seq of char)
+getClasses(s,specs) == 
+  let c = specs.getClassList(),
+      l = [ s(i) | i in set inds s 
+	        & isClassIn(s(i),c)]
+  in return l;
+  
+  
+public isClassIn :
+  seq of char * 
+  seq of OmlClass ==>
+  bool
+isClassIn(name,cls) == 
+  let c = getClass(name,cls)
+  in return not gatherInfoHelper(c);
+
+
+------------------------------------------------
+-- PRE-PROCESSOR (INHERITANCE) -----------------
+------------------------------------------------
+
+
+public preprocess : 
+  OmlSpecifications ==>
+  bool
+preprocess(specs) == 
+  let l = specs.getClassList()
+  in return hasMultipleInheritance(l);
+
+
+public hasMultipleInheritance :
+  seq of OmlClass ==>
+  bool
+hasMultipleInheritance(s) ==
+  let q = [ hasMI(s(i)) | i in set inds s]
+  in lor(q); 
+
+
+public lor :
+  seq of bool ==>
+  bool
+lor(s) == 
+  if len s = 0 
+  then return false
+  else return hd(s) or lor(tl(s));
+
+
+public hasMI :
+  OmlClass ==>
+  bool
+hasMI(c) == 
+  let ic = c.getInheritanceClause()
+  in if c.hasInheritanceClause()
+     then let l = len ic.getIdentifierList()
+	      in if l > 1 
+			 then return true
+			 else return false
+	 else return false;
+
+
+------------------------------------------------
+-- PRE-PROCESSOR (TYPES) -----------------------
+------------------------------------------------
+
+
+public gatherTypeInfo :
+  OmlSpecifications ==>
+  bool
+gatherTypeInfo(specs) ==
+  let classes = specs.getClassList(),
+      s = [ buildClassEntry(classes(i)) 
+	      | i in set inds classes ]
+  in return land(s);
+  
+  
+public land :
+  seq of bool ==>
+  bool
+land(s) == 
+  if len s = 0
+  then return true
+  else return hd(s) and land(tl(s));
+
+
+public buildClassEntry :
+  OmlClass ==>
+  bool
+buildClassEntry(c) ==
+  let cn = c.getIdentifier(),
+      bl = c.getClassBody(),
+      ts = buildTypeInfo(bl),
+	  cl = toClassInformation(bl)
+  in (
+        hold_type_info := hold_type_info ++ { cn |-> ts };
+		to_class := to_class ++ cl;
+		return true;
+     );
+  
+  
+public toClassInformation :
+  seq of IOmlDefinitionBlock ==>
+  map ClassId to Information
+toClassInformation(s) ==
+  let l = [ s(i) | i in set inds s &
+          isofclass(OmlTypeDefinitions,s(i))]
+  in return buildToClassInfo(l);
+  
+  
+public buildToClassInfo :
+  seq of OmlTypeDefinitions ==>
+  map ClassId to Information
+buildToClassInfo(s) ==
+  let l = [ s(i).getTypeList() | i in set inds s]
+  in return buildToClass(conc l);
+  
+  
+public buildToClass :
+  seq of OmlTypeDefinition ==>
+  map ClassId to Information
+buildToClass(s) ==
+  let l = [ s(i) | i in set inds s & selectShape(s(i).getShape())]
+  in buildClassMap(l);
+  
+  
+public buildClassMap :
+  seq of OmlTypeDefinition ==>
+  map ClassId to Information
+buildClassMap(s) == 
+  if len s = 0 then return {|->} else
+  let fst = hd s,
+      tail = tl s,
+      shp = fst.getShape(),
+	  val = buildMapValue(shp),
+	  key = getKey(shp)
+  in return { key |-> val} ++ buildClassMap(tail);
+  
+  
+public buildMapValue :
+  IOmlTypeShape ==>
+  Information
+buildMapValue(s) == 
+  cases true:
+    (isofclass(OmlComplexType,s))
+	  -> return getMapValue(s),
+	others 
+	  -> return mk_Information([],nil)
+  end;
+  
+  
+public getMapValue :
+  OmlComplexType ==>
+  Information
+getMapValue(c) ==
+  let fld = c.getFieldList(),
+      iv = c.getInvariant(),
+	  field = convertFieldList(fld),
+	  ninv = convertInvariant(iv)
+  in return mk_Information(field,ninv);
+  
+  
+public convertFieldList :
+  seq of OmlField ==>
+  seq of JmlField
+convertFieldList(s) == 
+  return [ convertField(s(i)) | i in set inds s];
+
+
+public convertField :
+  OmlField ==>
+  JmlField
+convertField(f) ==
+  let id = f.getIdentifier(),
+      tp = f.getType(),
+	  ntp = convertType(tp),
+	  nid = convertId(id)
+  in return new JmlField(nid,ntp);
+
+
+public convertId :
+  [seq of char] ==>
+  seq of char
+convertId(s) ==
+  if s = nil then return [] else return s;
+
+
+public convertInvariant :
+  [OmlInvariant] ==>
+  [JmlExpression]
+convertInvariant(invar) == 
+  if invar = nil then return nil else
+  let iv = invar.getExpression(),
+      ex = convertExpression(iv)
+  in return ex;
+  
+
+public getKey :
+  IOmlTypeShape ==>
+  seq of char
+getKey(s) == 
+  cases true:
+    (isofclass(OmlComplexType,s))
+	  -> return getKeyValue(s),
+	others 
+	  -> return []
+  end;
+	
+	
+public getKeyValue :
+  OmlComplexType ==>
+  seq of char
+getKeyValue(c) ==
+  return c.getIdentifier();
+	
+	    
+public selectShape :
+  IOmlTypeShape ==>
+  bool
+selectShape(s) ==
+  cases true:
+    (isofclass(OmlComplexType,s))
+	  -> return true,
+	others
+	  -> return false
+  end;
+  
+  
+public buildTypeInfo :
+  seq of OmlDefinitionBlock ==>
+  TypeInfo
+buildTypeInfo(s) == 
+  let q = collectTypeBlocks(s),
+      r = collectTypeInfo(q)
+  in return r;
+  
+  
+public collectTypeBlocks :
+  seq of IOmlDefinitionBlock ==>
+  seq of IOmlTypeDefinitions
+collectTypeBlocks(s) ==
+  return [ s(i) | i in set inds s & 
+    isofclass(OmlTypeDefinitions,s(i))];
+
+  
+public collectTypeInfo :
+  seq of OmlTypeDefinitions ==>
+  TypeInfo
+collectTypeInfo(s) ==
+  let q = mergeTypeDefs(s),
+      l = constructTypeInfo(q),
+	  m = mergeTypeInfos(l)
+  in return m;
+
+
+public mergeTypeDefs :
+  seq of OmlTypeDefinitions ==>
+  seq of OmlTypeDefinition
+mergeTypeDefs(s) == 
+  return conc [ s(i).getTypeList() | i in set inds s ];
+
+
+public constructTypeInfo :
+  seq of OmlTypeDefinition ==>
+  seq of TypeInfo
+constructTypeInfo(s) ==
+  return [ buildTypeInfoElement(s(i)) | i in set inds s];
+
+
+public buildTypeInfoElement :
+  OmlTypeDefinition ==>
+  TypeInfo
+buildTypeInfoElement(e) ==
+  let name = getTypeName(e),
+      val = getConvertedType(e)
+  in return {name |-> val};
+
+
+public getTypeName :
+  OmlTypeDefinition ==>
+  seq of char
+getTypeName(e) == 
+  let s = e.getShape(),
+      n = getNameFromShape(s)
+  in return n;
+
+
+public getNameFromShape :
+  IOmlTypeShape ==>
+  seq of char
+getNameFromShape(s) == 
+  cases true:
+    (isofclass(OmlSimpleType,s))
+	  -> return getSimpleName(s),
+	(isofclass(OmlComplexType,s))
+	  -> return getComplexName(s),
+	others
+	  -> return []
+  end;
+
+
+public getSimpleName :
+  OmlSimpleType ==>
+  seq of char
+getSimpleName(s) == 
+  return s.getIdentifier();
+
+
+public getComplexName :
+  OmlComplexType ==>
+  seq of char
+getComplexName(s) ==
+  return s.getIdentifier();
+
+
+public getConvertedType :
+  OmlTypeDefinition ==> 
+  JmlType
+getConvertedType(e) == 
+  let s = e.getShape()
+  in cases true:
+       (isofclass(OmlSimpleType,s))
+	     -> return getConvertedTypeHelper(s),
+	   others
+	     -> return getClassInformation(s)
+     end;
+
+
+public getConvertedTypeHelper :
+  OmlSimpleType ==>
+  JmlType
+getConvertedTypeHelper(t) == 
+  let tp = t.getType(),
+      nt = convertType(tp)
+  in return nt;
+
+
+public getClassInformation :
+  OmlComplexType ==>
+  IJmlType
+getClassInformation(t) ==
+  let id = t.getIdentifier(),
+      n = new JmlName(nil,id),
+	  c = new JmlClassName(n)
+  in return c;
+
+
+public mergeTypeInfos :
+  seq of TypeInfo ==>
+  TypeInfo
+mergeTypeInfos(s) ==
+  let r = elems s
+  in return merge r;
+
+
+------------------------------------------------
+-- MAPPER: VDM++ TO JML ------------------------
+------------------------------------------------
+
+public build_jml : 
+  OmlSpecifications ==> 
+  JmlSpecifications
+build_jml(specs) == 
+  let classes = specs.getClassList(),
+	  jml_classes = convertVdm2JmlClasses(classes)
+  in return new JmlSpecifications(jml_classes);
+					
+					
+public convertVdm2JmlClasses : 
+  seq of OmlClass ==> 
+  seq of JmlWrappedJmlClass
+convertVdm2JmlClasses(classes) == 
+  return [ convertVdm2JmlClass(classes(i)) | i in set inds classes ];
+
+
+public convertVdm2JmlClass : 
+  OmlClass ==> 
+  JmlWrappedJmlClass
+convertVdm2JmlClass(c) == 
+  let id   = c.getIdentifier(),
+	  inh  = c.getInheritanceClause(),
+	  body = c.getClassBody(),
+	  jmlclass = build_class(id, inh, body),
+	  jmlimports = getJmlImports(),
+	  javaimports = getJavaImports()
+  in return new JmlWrappedJmlClass([],[],javaimports,jmlimports,jmlclass);
+
+
+--FIXME: should search jml types, and add them
+public getJmlImports : 
+  () ==> 
+  seq of JmlModelImport
+getJmlImports() == return [];
+
+
+--FIXME: should search java types, and add them
+public getJavaImports : 
+  () ==> 
+  seq of JmlImport
+getJavaImports() == return [];
+
+
+public build_class : 
+  seq of char * 
+  OmlInheritanceClause * 
+  seq of OmlDefinitionBlock ==> 
+  JmlClass
+build_class(id,inh,body) == 
+  let scope = new JmlScope(3),
+	  access = new JmlAccessDefinition(scope),
+	  kind = new JmlClassKind(0),
+	  class_inh = getSuperClasses(inh),
+	  inter_inh = getInterfaces(inh),
+	  def_blocks = build_def_blocks(body)
+  in return new JmlClass(access, kind, id, class_inh, inter_inh, def_blocks);
+
+
+public getInterfaces :
+  [OmlInheritanceClause] ==>
+  [JmlInterfaceInheritanceClause]
+getInterfaces(inh) == 
+  if inh = nil then return nil else 
+  let list = inh.getIdentifierList()
+  in if len list = 0
+     then return nil
+	 else let lst = [ list(i) | i in set inds list 
+	                & list(i) in set interfaces_list]
+		  in return new JmlInterfaceInheritanceClause(lst);
+
+
+public getSuperClasses :
+  [OmlInheritanceClause] ==>
+  [JmlClassInheritanceClause]
+getSuperClasses(inh) == 
+  if inh = nil then return nil else
+  let list = inh.getIdentifierList()
+  in if len list = 0
+     then return nil
+	 else let lst = [ list(i) 
+	                | i in set inds list 
+					& list(i) in set classes_list ]
+		  in if len lst > 1 or len lst = 0
+			 then return nil
+			 else return new JmlClassInheritanceClause(hd lst);
+
+
+public build_def_blocks : 
+  seq of IOmlDefinitionBlock ==> 
+  seq of IJmlDefinitionBlock
+build_def_blocks(s) == 
+  return [ build_def_block(s(i)) | i in set inds s];
+
+
+-----------------------------------------------------
+-- Values -------------------------------------------
+-----------------------------------------------------
+
+
+public build_def_block : 
+  OmlValueDefinitions ==> 
+  JmlValueDefinitions
+build_def_block(t) == 
+  let val = t.getValueList(),
+	  res = buildValueList(val)
+  in return new JmlValueDefinitions(res);
+
+
+public buildValueList : 
+  seq of OmlValueDefinition ==> 
+  seq of JmlValueDefinition
+buildValueList(s) == 
+  return [ buildJmlValue(s(i)) | i in set inds s];
+
+
+public buildJmlValue : 
+  OmlValueDefinition ==> 
+  JmlValueDefinition
+buildJmlValue(val) == 
+  let access = val.getAccess(),
+	  shape = val.getShape(),
+	  newAccess = buildJmlAccess(access),
+	  newShape = buildJmlShape(shape)
+  in return new JmlValueDefinition(newAccess,true,true,newShape);
+				
+					  	  
+public buildJmlAccess : 
+  OmlAccessDefinition ==> 
+  JmlAccessDefinition
+buildJmlAccess(a) == 
+  let scope = a.getScope(),
+	  res   = buildJmlScope(scope)
+      in return new JmlAccessDefinition(res);
+
+
+public buildJmlScope : 
+  OmlScope ==> 
+  JmlScope
+buildJmlScope(s) == 
+  return new JmlScope(s.getValue());
+
+
+public buildJmlShape : 
+  OmlValueShape ==> 
+  JmlValueShape
+buildJmlShape(s) == 
+  let p = s.getPattern(),
+	  t = s.getType(),
+	  e = s.getExpression(),
+	  id = getIdentifier(p),
+	  tp = convertType(t),
+	  exp = convertExpression(e)
+  in return new JmlValueShape(id, tp, exp);
+
+
+public getIdentifier : 
+  OmlPatternIdentifier ==> 
+  seq of char
+getIdentifier(p) == 
+  return p.getIdentifier();
+
+
+-----------------------------------------------------
+-- Instance variables -------------------------------
+-----------------------------------------------------
+
+
+public build_def_block : 
+  OmlInstanceVariableDefinitions ==> 
+  JmlInstanceVariableDefinitions
+build_def_block(v) == 
+  let s = buildVariablesList(v)
+  in return new JmlInstanceVariableDefinitions(s,[]);
+
+
+public buildVariablesList : 
+  OmlInstanceVariableDefinitions ==> 
+  seq of [JmlVariable]
+buildVariablesList(s) == 
+  let q = s.getVariablesList()
+  in return [ buildVariables(q(i)) | 
+     i in set inds q & is_(q(i),OmlInstanceVariable) ];
+
+
+public buildVariables : 
+  OmlInstanceVariable ==> 
+  JmlVariable
+buildVariables(var) == 
+  let access = var.getAccess(),
+      scope = access.getScope(),
+      assign = var.getAssignmentDefinition(),
+      newScope = new JmlScope(scope.getValue()),
+      newAccess = new JmlAccessDefinition(newScope),
+      stat = access.getStaticAccess(),
+      tp = convertType(assign.getType()),
+      id = assign.getIdentifier(),              
+      expr = convertExpression(assign.getExpression())
+  in return new JmlVariable(newAccess, true, stat, 
+                            false, tp, id, expr);
+
+
+-----------------------------------------------------
+-- Operations ---------------------------------------
+-----------------------------------------------------
+
+
+public build_def_block : 
+  OmlOperationDefinitions ==> 
+  JmlOperationDefinitions
+build_def_block(t) == 
+  let s = t.getOperationList(),
+	  res = convertOperationList(s)
+  in return new JmlOperationDefinitions(res);
+
+
+public convertOperationList : 
+  seq of OmlOperationDefinition ==> 
+  seq of JmlOperationDefinition
+convertOperationList(s) == 
+  return [ convertOperation(s(i)) | i in set inds s ];
+
+
+public convertOperation : 
+  OmlOperationDefinition ==> 
+  JmlOperationDefinition
+convertOperation(op) == 
+  let access = op.getAccess(),
+	  scope = access.getScope(),
+	  static_val = access.getStaticAccess(),
+	  newScope = new JmlScope(scope.getValue()),
+	  newAccess = new JmlAccessDefinition(newScope),
+	  shape = op.getShape()
+  in return buildJmlOperation(newAccess,static_val,shape);
+						
+
+public buildJmlOperation :
+  JmlAccessDefinition *
+  bool *
+  IOmlOperationShape ==>
+  JmlOperationDefinition
+buildJmlOperation(access,statickey,shape) ==
+  cases true:
+    (isofclass(OmlImplicitOperation,shape))
+	  -> buildImplicitJmlOperation(access,statickey,shape),
+	(isofclass(OmlExplicitOperation,shape))
+	  -> buildExplicitJmlOperation(access,statickey,shape),
+	(isofclass(OmlExtendedExplicitOperation,shape))
+	  -> buildExtendedJmlOperation(access,statickey,shape)
+  end;
+
+public buildImplicitJmlOperation : 
+  JmlAccessDefinition * 
+  bool * 
+  OmlImplicitOperation ==>
+  JmlOperationDefinition
+buildImplicitJmlOperation(access,statickey,shape) == 
+  let id = shape.getIdentifier(),
+	  params = shape.getPatternTypePairList(),
+	  returns = shape.getIdentifierTypePairList(),
+	  trailer = shape.getTrailer(),
+	  newTrailer = buildOperationTrailer(trailer,access),
+	  returnType = buildReturnType(returns),
+	  newParams = buildParameters(params)
+  in return new JmlOperationDefinition(newTrailer,access,
+       true,statickey,false,returnType,id,newParams,nil);
+
+
+public buildExplicitJmlOperation : 
+  JmlAccessDefinition * 
+  bool *
+  OmlExplicitOperation ==>
+  JmlOperationDefinition
+buildExplicitJmlOperation(access,statickey,shape) == 
+  let id = shape.getIdentifier(),
+      tp = shape.getType(),
+      type_rng = getRngType(tp),
+      params = shape.getParameterList(),
+      trailer = buildOperationTrailer(shape.getTrailer(),access),
+      paramsList = buildOperationParameters(params,tp)
+  in return new JmlOperationDefinition(trailer,access,true,
+     statickey,false,type_rng,id,paramsList,nil);
+
+
+public buildExtendedJmlOperation : 
+  JmlAccessDefinition * 
+  bool *
+  OmlExtendedExplicitOperation ==>
+  JmlOperationDefinition
+buildExtendedJmlOperation(access,statickey,shape) ==
+  let id = shape.getIdentifier(),
+      params = shape.getPatternTypePairList(),
+	  returns = shape.getIdentifierTypePairList(),
+	  trailer = shape.getTrailer(),
+	  newTrailer = buildOperationTrailer(trailer,access),
+	  returnType = buildReturnType(returns),
+	  newParams = buildParameters(params)
+  in return new JmlOperationDefinition(newTrailer,access,true,
+     statickey,false,returnType,id,newParams,nil);
+
+
+public buildOperationParameters : 
+  seq of OmlPattern * 
+  OmlOperationType ==> 
+  seq of JmlParameter
+buildOperationParameters(s,t) == 
+  let domtype = t.getDomType()
+  in return buildOperationParameter(s,domtype);
+
+
+public buildOperationParameter :
+  seq of OmlPattern *
+  IOmlType ==>
+  seq of JmlParameter
+buildOperationParameter(s,t) == 
+  cases true:
+    (isofclass(OmlProductType,t)) 
+	  -> return unfoldProductType(s,t),
+	others 
+	  -> return buildJmlParameter(s,t)
+  end;
+
+
+public unfoldProductType : 
+  seq of OmlPattern *
+  OmlProductType ==>
+  seq of JmlParameter
+unfoldProductType(s,t) ==
+  let ts = buildSeqTypes(t),
+      p  = extractPatterns(s),
+	  f  = buildParameterSeq(p,ts)
+  in return f;
+
+
+public buildSeqTypes :
+  OmlProductType ==>
+  seq of OmlType
+buildSeqTypes(p) == 
+  let rhs = p.getRhsType(),
+      lhs = p.getLhsType()
+  in return (extractProductType(rhs) ^ 
+  extractProductType(lhs));
+
+
+public extractProductType : 
+  IOmlType ==>
+  seq of OmlType
+extractProductType(t) == 
+  cases true:
+    (isofclass(OmlProductType,t))
+	  -> return buildSeqTypes(t),
+	others
+	  -> return [ t ]
+  end;
+
+
+public extractPatterns :
+  seq of OmlPattern ==>
+  seq of (seq of char)
+extractPatterns(s) == 
+  return [ extractPattern(s(i)) | i in set inds s];
+
+
+public extractPattern :
+  IOmlPattern ==>
+  seq of char
+extractPattern(p) ==
+  cases true:
+    (isofclass(OmlPatternIdentifier,p))
+	  -> return getId(p),
+	others
+	  -> return []
+  end;
+
+
+public buildParameterSeq :
+  seq of (seq of char) *
+    seq of OmlType ==>
+  seq of JmlParameter
+buildParameterSeq(p,t) ==
+  if len p <> len t 
+  then return []
+  else return 
+    [ let nt = convertType(t(i)),
+	      v = p(i)  
+	  in new JmlParameter(nt,v)
+	| i in set inds p];
+
+
+public buildJmlParameter :
+  seq of OmlPattern *
+  OmlType ==>
+  seq of JmlParameter
+buildJmlParameter(s,t) == 
+  if len s = 0 or len s > 1
+  then return []
+  else
+  let tp = convertType(t),
+      fst = hd(s),
+	  id = getIds(fst),
+	  par = new JmlParameter(tp,id)
+  in return [par];
+	  
+	  
+public getIds : 
+  IOmlPattern ==>
+  seq of char
+getIds(p) ==
+  cases true:
+    (isofclass(OmlPatternIdentifier,p))
+	  -> return getId(p),
+	others 
+	  -> return []
+  end;
+  
+  
+public getId :
+  OmlPatternIdentifier ==>
+  seq of char
+getId(p) ==
+  return p.getIdentifier();
+
+
+public buildReturnType : 
+  seq of OmlIdentifierTypePair ==> 
+  IJmlType
+buildReturnType(s) ==
+  if len s > 1
+  then let q = [ convertType(s(i).getType()) | i in set inds s ],
+           t = new JmlTupleType(q)
+	   in return t
+  else let t = s(1).getType()
+       in return convertType(t);
+
+
+public buildParameters : 
+  seq of OmlPatternTypePair ==> 
+  seq of JmlParameter
+buildParameters(s) == 
+  return conc [ buildParameter(s(i)) | i in set inds s];
+
+
+public buildParameter : 
+  OmlPatternTypePair ==> 
+  seq of JmlParameter
+buildParameter(p) == 
+  let s = p.getPatternList(),
+	  t = p.getType()
+  in return [ buildParam(s(i),t) | i in set inds s];
+
+
+public buildParam : 
+  OmlPatternIdentifier * 
+  OmlType ==> 
+  JmlParameter
+buildParam(p,t) == 
+  let tp = convertType(t),
+	  id = p.getIdentifier()
+  in return new JmlParameter(tp,id);
+
+
+public buildOperationTrailer : 
+  OmlOperationTrailer *
+  JmlAccessDefinition ==> 
+  [JmlMethodSpecifications]
+buildOperationTrailer(trailer,access) ==
+  let ex = trailer.getExternals(),
+	  pr = trailer.getPreExpression(),
+	  po = trailer.getPostExpression(),
+	  ep = trailer.getExceptions()
+  in let normal = buildNormalBehaviour(ex,pr,po,ep,
+                  access.getScope().getValue()),
+		 spec = new JmlSpecs(normal),
+		 also = new JmlSpecs([])
+	 in return new JmlMethodSpecifications(spec,also);
+
+
+public buildError : 
+  OmlError ==> 
+  JmlRequiresClause
+buildError(e) ==
+  let expr = convertExpression(e.getLhs())
+  in return new JmlRequiresClause(expr);
+
+
+public buildNormalBehaviour : 
+  [OmlExternals] *
+  [OmlExpression] *
+  [OmlExpression] *
+  [OmlExceptions] *
+  nat ==>
+  seq of JmlNormalSpec
+buildNormalBehaviour(ex,pr,po,ep,n) == 
+  let externals = buildAssignableClause(ex),
+      pres = buildRequiresClause(pr,ep),
+	  posts = buildEnsuresClause(po,ep),
+	  trailers = externals ^ pres ^ posts,
+	  scope = new JmlScope(n)
+  in return [new JmlNormalSpec(scope,trailers) ];
+
+
+--------------------------
+-- Assignable Clause -----
+--------------------------
+
+
+public buildAssignableClause : 
+  [OmlExternals] ==> 
+  seq of JmlAssignableClause
+buildAssignableClause(e) == 
+  if e = nil then return [] else
+  let list = e.getExtList(),
+      res = [ getExternalNames(list(i).getNameList()) 
+	          | i in set inds list ]
+  in return res;
+
+
+public getExternalNames : 
+  seq of OmlName ==> 
+  JmlAssignableClause
+getExternalNames(s) == 
+  let l = [ s(i).getIdentifier() | i in set inds s]
+  in return new JmlAssignableClause(l);
+
+
+--------------------------
+-- Requires Clause -------
+--------------------------
+
+
+public buildRequiresClause : 
+  [OmlExpression] * 
+  [OmlExceptions] ==> 
+  seq of JmlRequiresClause
+buildRequiresClause(pres,exc) ==
+  if (pres = nil and exc = nil) then return [] else 
+  let exceptions = buildDisjunctions(exc),
+      precond = convertExpression(pres),
+	  final_pre = chooserDisj(exceptions,precond),
+	  req = new JmlRequiresClause(final_pre)
+  in return [ req ];
+
+
+public chooserDisj :
+  [IJmlExpression] *
+  [IJmlExpression] ==>
+  IJmlExpression
+chooserDisj(exc,expr) ==
+  cases true:
+    (exc = nil) -> return expr,
+	(expr = nil) -> return exc,
+	others -> 
+	  let op = new JmlBinaryOperator(1),
+	  final_pre = new JmlBinaryExpression(expr,op,exc)
+	in return final_pre
+  end;
+
+
+public buildDisjunctions : 
+  [OmlExceptions] ==> 
+  [IJmlExpression]
+buildDisjunctions(exc) == 
+  if exc = nil then return nil else 
+  let l = exc.getErrorList()
+  in if len l = 0 
+     then let lit = new JmlBooleanLiteral(true),
+	          expr = new JmlLiteralExpression(lit)
+		  in return expr
+     else return buildDisjunction(l);
+
+
+public buildDisjunction : 
+  seq of OmlError ==> 
+  IJmlExpression
+buildDisjunction(s) == 
+  if len s = 0 
+  then let lit = new JmlBooleanLiteral(true),
+           exp = new JmlLiteralExpression(lit)
+	   in return exp
+  else let erro = hd(s),
+           e = erro.getLhs(),
+		   expr = convertExpression(e),
+		   op = new JmlBinaryOperator(1),
+		   rhs = buildDisjunction(tl(s))
+	   in return new JmlBinaryExpression(expr,op, rhs);
+
+
+--------------------------
+-- Ensures Clause --------
+--------------------------
+
+
+public buildEnsuresClause : 
+  [OmlExpression] * 
+  [OmlExceptions] ==> 
+  seq of JmlEnsuresClause
+buildEnsuresClause(po,ex) ==
+  if (po = nil and ex = nil) then return [] else 
+  let postexpr = convertExpression(po),
+      conj = buildConjunctions(ex),
+	  finalpost = chooserConj(conj,postexpr),
+	  ens = new JmlEnsuresClause(finalpost)
+  in return [ ens ];
+  
+  
+public chooserConj :
+  [IJmlExpression] *
+  [IJmlExpression] ==>
+  IJmlExpression
+chooserConj(exc,expr) ==
+  cases true:
+    (exc = nil) -> return expr,
+	(expr = nil) -> return exc,
+	others -> 
+	  let op = new JmlBinaryOperator(11),
+	      finalpost = new JmlBinaryExpression(expr,op,exc)
+	in return finalpost
+  end;
+  
+  
+public buildConjunctions : 
+  [OmlExceptions] ==>
+  [IJmlExpression]
+buildConjunctions(except) ==
+  if except = nil then return nil else 
+  let errlst = except.getErrorList()
+  in if len errlst = 0
+     then let lit = new JmlBooleanLiteral(true),
+	          expr = new JmlLiteralExpression(lit)
+		  in return expr
+     else return buildConjunction(errlst);
+	 
+	 
+public buildConjunction :
+  seq of OmlError ==>
+  IJmlExpression
+buildConjunction(s) ==
+  if len s = 0 
+  then let lit = new JmlBooleanLiteral(true),
+           exp = new JmlLiteralExpression(lit)
+	   in return exp
+  else let erro = hd(s),
+           e = erro.getLhs(),
+		   expr = convertExpression(e),
+		   op = new JmlBinaryOperator(11),
+		   rhs = buildConjunction(tl(s))
+	   in return new JmlBinaryExpression(expr,op, rhs);
+
+-----------------------------------------------------
+-- Other constructs ---------------------------------
+-----------------------------------------------------
+
+
+--FIXME: a function can be mapped. Think about this.
+public build_def_block : 
+  OmlFunctionDefinitions ==> 
+  JmlOtherDefinitions
+build_def_block(-) == return new JmlOtherDefinitions();
+
+
+public build_def_block : 
+  OmlSynchronizationDefinitions ==> 
+  JmlOtherDefinitions
+build_def_block(-) == return new JmlOtherDefinitions();
+
+
+public build_def_block : 
+  OmlThreadDefinition ==> 
+  JmlOtherDefinitions
+build_def_block(-) == return new JmlOtherDefinitions();
+
+
+public build_def_block : 
+  OmlTraceDefinitions ==> 
+  JmlOtherDefinitions
+build_def_block(-) == return new JmlOtherDefinitions();
+
+
+--ignored here, but pre-processed earlier.
+public build_def_block : 
+  OmlTypeDefinitions ==> 
+  JmlOtherDefinitions
+build_def_block(-) == return new JmlOtherDefinitions();
+
+
+-----------------------------------------------------
+-- Convert Types ------------------------------------
+-----------------------------------------------------
+
+
+public convertType : 
+  IOmlType ==> 
+  IJmlType
+convertType(t) ==
+  cases true:
+    (isofclass(OmlBracketedType,t))
+	  -> return convertBracketedType(t),
+	(isofclass(OmlBoolType,t))
+	  -> return new JmlBoolType(),
+	(isofclass(OmlNatType,t))
+	  -> return new JmlNatType(0),
+	(isofclass(OmlNat1Type,t))
+	  -> return new JmlNatType(1),
+	(isofclass(OmlIntType,t))
+	  -> return new JmlIntegerType(),
+	(isofclass(OmlRealType,t))
+	  -> return new JmlFloatType(),
+	(isofclass(OmlCharType,t))
+	  -> return new JmlCharType(),
+	(isofclass(OmlTokenType,t))
+	  -> return new JmlObjectType(),
+	(isofclass(OmlQuoteType,t))
+	  -> return convertQuoteType(t),
+	(isofclass(OmlCompositeType,t))
+	  -> return convertCompositeType(t), 
+	(isofclass(OmlProductType,t))
+	  -> return convertProductType(t),
+	(isofclass(OmlSetType,t))
+	  -> return convertSetType(t),
+	(isofclass(OmlSeq0Type,t))
+	  -> return convertSeq0Type(t),
+	(isofclass(OmlSeq1Type,t))
+	  -> return convertSeq1Type(t),
+	(isofclass(OmlGeneralMapType,t))
+	  -> return convertMapType(t),
+	(isofclass(OmlEmptyType,t))
+	  -> return new JmlVoidType(),
+	(isofclass(OmlTypeName,t))
+	  -> convertTypeName(t),
+	others 
+	  -> return new JmlVoidType()
+  end;
+
+
+public convertBracketedType :
+  OmlBracketedType ==>
+  JmlType
+convertBracketedType(t) ==
+  return convertType(t.getType());
+
+
+public convertQuoteType :
+  OmlQuoteType ==>
+  JmlEnumerationType
+convertQuoteType(t) ==
+  let q = t.getQuoteLiteral(),
+      id = q.getVal(),
+      l = new JmlEnumLiteral(id)
+  in return new JmlEnumerationType(l);
+
+
+public convertProductType :
+  OmlProductType ==>
+  JmlTupleType
+convertProductType(t) ==
+  let tp = buildSeqTypes(t),
+      sq = [ convertType(tp(i)) | i in set inds tp ]
+  in return new JmlTupleType(sq);
+
+
+public convertCompositeType :
+  OmlCompositeType ==>
+  JmlClassType
+convertCompositeType(t) ==
+  let id = t.getIdentifier()
+  in return new JmlClassType(id,[]);
+
+
+public convertSetType :
+  OmlSetType ==>
+  JmlSetValueType
+convertSetType(t) == 
+  let tp = t.getType(),
+      newtp = convertType(tp)
+  in return new JmlSetValueType(newtp);
+
+
+public convertSeq0Type :
+  OmlSeq0Type ==>
+  JmlSeqValueType
+convertSeq0Type(t) ==
+  let tp = t.getType(),
+      newtp = convertType(tp)
+  in return new JmlSeqValueType(newtp,0);
+  
+  
+public convertSeq1Type :
+  OmlSeq0Type ==>
+  JmlSeqValueType
+convertSeq1Type(t) ==
+  let tp = t.getType(),
+      newtp = convertType(tp)
+  in return new JmlSeqValueType(newtp,1);
+
+
+public convertMapType :
+  OmlGeneralMapType ==>
+  JmlMapValueToValueType
+convertMapType(t) ==
+  let mapdom = t.getDomType(),
+	  maprng = t.getRngType(),
+      newdom = convertType(mapdom),
+      newrng = convertType(maprng)
+  in return new JmlMapValueToValueType(newdom,newrng);
+
+
+public convertTypeName :
+  OmlTypeName ==>
+  JmlClassName
+convertTypeName(t) ==
+  let id = t.getName(),
+      newid = convertName(id)
+  in return new JmlClassName(newid);
+
+
+public getDomType : 
+  OmlOperationType ==> 
+  JmlType
+getDomType(op) == 
+  return convertType(op.getDomType());
+
+
+public getRngType : 
+  OmlOperationType ==> 
+  JmlType
+getRngType(op) == 
+  return convertType(op.getRngType());
+
+
+-----------------------------------------------------
+-- Convert Expressions ------------------------------
+-----------------------------------------------------
+
+
+public convertExpression : 
+  [IOmlExpression] ==> 
+  [IJmlExpression]
+convertExpression(e) ==
+  if e = nil then return nil else
+  cases true:
+    (isofclass(OmlBracketedExpression,e))
+	  -> return convertBracketedExpression(e),
+    (isofclass(OmlLetExpression,e))
+	  -> return convertLetExpression(e),
+	(isofclass(OmlIfExpression,e))
+	  -> return convertIfExpression(e),
+	(isofclass(OmlUnaryExpression,e))
+	  -> return convertUnaryExpression(e),
+	(isofclass(OmlBinaryExpression,e))
+	  -> return convertBinaryExpression(e),
+	(isofclass(OmlForAllExpression,e))
+	  -> return convertForAllExpression(e),
+	(isofclass(OmlExistsExpression,e))
+	  -> return convertExistsExpression(e),
+	(isofclass(OmlSetEnumeration,e))
+	  -> return convertSetEnumeration(e),
+	(isofclass(OmlSequenceEnumeration,e))
+	  -> return convertSequenceEnumeration(e),
+	(isofclass(OmlMapEnumeration,e))
+	  -> return convertMapEnumeration(e),
+	(isofclass(OmlTupleConstructor,e))
+	  -> return convertTupleConstructor(e),
+	(isofclass(OmlRecordConstructor,e))
+	  -> return convertRecordExpression(e),
+	(isofclass(OmlApplyExpression,e))
+	  -> return convertApplyExpression(e),
+	(isofclass(OmlFieldSelect,e))
+	  -> return convertFieldSelect(e),
+	(isofclass(OmlNewExpression,e))
+	  -> return convertNewExpression(e),
+	(isofclass(OmlSelfExpression,e))
+	  -> return convertSelfExpression(e),
+	(isofclass(OmlIsExpression,e))
+	  -> return convertIsExpression(e),
+	(isofclass(OmlUndefinedExpression,e))
+	  -> return convertUndefinedExpression(e),
+	(isofclass(OmlIsofclassExpression,e))
+	  -> return convertIsOfClassExpression(e),
+	(isofclass(OmlName,e))
+	  -> return convertName(e),
+	(isofclass(OmlOldName,e))
+	  -> return convertOldName(e),
+	(isofclass(OmlSymbolicLiteralExpression,e))
+	  -> return convertLiteralExpression(e)
+  end;
+  
+  
+public convertBracketedExpression :
+  OmlBracketedExpression ==>
+  JmlBracketedExpression
+convertBracketedExpression(e) ==
+  let exp = e.getExpression(),
+      newexpr = convertExpression(exp)
+  in return new JmlBracketedExpression(newexpr);
+  
+  
+public convertLetExpression :
+  OmlLetExpression ==>
+  JmlBlockExpression
+convertLetExpression(e) ==
+  let bind = e.getDefinitionList(),
+      newbind = buildJmlShapes(bind),
+	  expr = e.getExpression(),
+	  res = convertExpression(expr)
+  in return new JmlBlockExpression(newbind,res);
+  
+  
+public buildJmlShapes :
+  seq of OmlValueShape ==>
+  seq of JmlValueShape
+buildJmlShapes(s) ==
+  return [ buildJmlShape(s(i)) | i in set inds s];
+  
+  
+public convertIfExpression :
+  OmlIfExpression ==>
+  JmlIfExpression
+convertIfExpression(e) ==
+  let if_expr = e.getIfExpression(),
+      then_expr = e.getThenExpression(),
+	  else_expr = e.getElseExpression(),
+	  newif = convertExpression(if_expr),
+	  newthen = convertExpression(then_expr),
+	  newelse = convertExpression(else_expr)
+  in return new JmlIfExpression(newif,newthen,newelse);
+  
+  
+public convertUnaryExpression :
+  OmlUnaryExpression ==>
+  JmlUnaryExpression
+convertUnaryExpression(e) ==
+  let op = e.getOperator(),
+      newop = convertUnaryOperator(op),
+	  expr = e.getExpression(),
+	  newexpr = convertExpression(expr)
+  in return new JmlUnaryExpression(newop,newexpr);
+  
+  
+public convertUnaryOperator :
+  OmlUnaryOperator ==>
+  JmlUnaryOperator
+convertUnaryOperator(op) == 
+  let val = op.getValue()
+  in cases true:
+       (val = 0) -> return new JmlUnaryOperator(4),
+	   (val = 1) -> return new JmlUnaryOperator(5),
+	   (val = 2) -> return new JmlUnaryOperator(10),
+	   (val = 3) -> return new JmlUnaryOperator(7),
+	   (val = 5) -> return new JmlUnaryOperator(2),
+	   (val = 6) -> return new JmlUnaryOperator(0),
+	   (val = 8) -> return new JmlUnaryOperator(6),
+	   (val = 9) -> return new JmlUnaryOperator(14),
+	   (val = 10) -> return new JmlUnaryOperator(12),
+	   (val = 11) -> return new JmlUnaryOperator(8),
+	   (val = 14) -> return new JmlUnaryOperator(15),
+	   (val = 15) -> return new JmlUnaryOperator(1),
+	   (val = 16) -> return new JmlUnaryOperator(13),
+	   (val = 17) -> return new JmlUnaryOperator(3),
+	   others -> return new JmlUnaryOperator()
+     end ;
+  
+  
+public convertBinaryExpression :
+  OmlBinaryExpression ==>
+  JmlBinaryExpression
+convertBinaryExpression(e) ==
+  let lhs = e.getLhsExpression(),
+      op = e.getOperator(),
+	  rhs = e.getRhsExpression(),
+	  newlhs = convertExpression(lhs),
+	  newrhs = convertExpression(rhs),
+	  newop = convertBinaryOperator(op)
+  in return new JmlBinaryExpression(newlhs,newop,newrhs);
+  
+  
+public convertBinaryOperator :
+  OmlBinaryOperator ==>
+  JmlBinaryOperator
+convertBinaryOperator(op) ==
+  let val = op.getValue()
+  in cases true:
+       (val = 1) -> return new JmlBinaryOperator(18),
+	   (val = 2) -> return new JmlBinaryOperator(23),
+	   (val = 3) -> return new JmlBinaryOperator(13),
+	   (val = 6) -> return new JmlBinaryOperator(22),
+	   (val = 7) -> return new JmlBinaryOperator(33),
+	   (val = 8) -> return new JmlBinaryOperator(1),
+	   (val = 10) -> return new JmlBinaryOperator(16),
+	   (val = 11) -> return new JmlBinaryOperator(0),
+	   (val = 12) -> return new JmlBinaryOperator(12),
+	   (val = 13) -> return new JmlBinaryOperator(4),
+	   (val = 14) -> return new JmlBinaryOperator(15),
+	   (val = 16) -> return new JmlBinaryOperator(28),
+	   (val = 19) -> return new JmlBinaryOperator(6),
+	   (val = 20) -> return new JmlBinaryOperator(34),
+	   (val = 21) -> return new JmlBinaryOperator(32),
+	   (val = 22) -> return new JmlBinaryOperator(2),
+	   (val = 23) -> return new JmlBinaryOperator(8),
+	   (val = 24) -> return new JmlBinaryOperator(30),
+	   (val = 25) -> return new JmlBinaryOperator(31),
+	   (val = 26) -> return new JmlBinaryOperator(14),
+	   (val = 27) -> return new JmlBinaryOperator(7),
+	   (val = 30) -> return new JmlBinaryOperator(21),
+	   (val = 31) -> return new JmlBinaryOperator(24),
+	   (val = 32) -> return new JmlBinaryOperator(19),
+	   (val = 33) -> return new JmlBinaryOperator(9),
+	   others -> return new JmlBinaryOperator()
+     end;
+  
+  
+public convertForAllExpression :
+  OmlForAllExpression ==>
+  JmlForAllExpression
+convertForAllExpression(e) ==
+  let bind = e.getBindList(),
+      expr = e.getExpression(),
+	  newexpr = convertExpression(expr)
+  in return buildForAllExpression(bind,newexpr);
+  
+  
+public buildForAllExpression :
+  seq of OmlBind * 
+  JmlExpression ==>
+  JmlForAllExpression
+buildForAllExpression(bind,expr) ==
+  if len bind > 1
+  then let b = buildBind(hd bind),
+	       e = buildForAllExpression(tl bind,expr)
+	   in return new JmlForAllExpression(b,[e])
+  else let b = buildBind(hd bind)
+       in return new JmlForAllExpression(b,[expr]);
+  
+  
+public buildBind :
+  IOmlBind ==>
+  JmlQuantifierDeclaration
+buildBind(b) == 
+  cases true:
+    (isofclass(OmlTypeBind,b))
+	  -> return buildTypeBinds(b),
+	others 
+	  -> return new JmlQuantifierDeclaration()
+  end;
+  
+  
+public buildTypeBinds :
+  OmlTypeBind ==>
+  JmlQuantifierDeclaration
+buildTypeBinds(b) == 
+  let p = b.getPattern(),
+      t = b.getType()
+  in buildTypeBind(p,t);
+  
+  
+public buildTypeBind :
+  seq of IOmlPattern *
+  IOmlType ==>
+  JmlQuantifierDeclaration
+buildTypeBind(p,t) ==
+  let s = getVars(p),
+      t1 = convertType(t)
+  in return new JmlQuantifierDeclaration(nil,t1,s);
+  
+  
+public getVars :
+  seq of IOmlPattern ==>
+  seq of (seq of char)
+getVars(s) ==
+  return [ getVar(s(i)) | i in set inds s];
+
+
+public getVar :
+  IOmlPattern ==>
+  seq of char
+getVar(p) ==
+  cases true:
+    (isofclass(OmlPatternIdentifier,p))
+	  -> return getId(p),
+	others
+	  -> return []
+  end;
+
+  
+public convertExistsExpression :
+  OmlExistsExpression ==>
+  JmlExistsExpression
+convertExistsExpression(e) == 
+  let bind = e.getBindList(),
+      expr = e.getExpression(),
+	  newexpr = convertExpression(expr)
+  in return buildExistsExpression(bind,newexpr);
+  
+
+public buildExistsExpression :
+  seq of OmlBind * 
+  JmlExpression ==>
+  JmlExistsExpression
+buildExistsExpression(bind,expr) ==
+  if len bind > 1
+  then let b = buildBind(hd bind),
+	       e = buildExistsExpression(tl bind,expr)
+	   in return new JmlExistsExpression(b,[e])
+  else let b = buildBind(hd bind)
+       in return new JmlExistsExpression(b,[expr]);
+  
+  
+public convertSetEnumeration :
+  OmlSetEnumeration ==>
+  JmlSetEnumeration
+convertSetEnumeration(e) ==
+  let v = e.getExpressionList(),
+      s = [ convertExpression(v(i)) | i in set inds v]
+  in return new JmlSetEnumeration(s);
+  
+  
+public convertSequenceEnumeration :
+  OmlSequenceEnumeration ==>
+  JmlSequenceEnumeration
+convertSequenceEnumeration(e) ==
+  let v = e.getExpressionList(),
+      s = [ convertExpression(v(i)) | i in set inds v]
+  in return new JmlSequenceEnumeration(s);
+  
+  
+public convertMapEnumeration :
+  OmlMapEnumeration ==>
+  JmlMapEnumeration
+convertMapEnumeration(e) ==
+  let m = e.getMapletList(),
+      s = convertMapLetList(m)
+  in return new JmlMapEnumeration(s);
+  
+  
+public convertMapLetList :
+  seq of OmlMaplet ==>
+  seq of JmlMapLet
+convertMapLetList(s) ==
+  return [ convertMapLet(s(i)) | i in set inds s];
+  
+  
+public convertMapLet :
+  OmlMaplet ==>
+  JmlMapLet
+convertMapLet(e) ==
+  let d = e.getDomExpression(),
+      r = e.getRngExpression(),
+	  dm = convertExpression(d),
+	  rn = convertExpression(r)
+  in return new JmlMapLet(dm,rn);
+  
+  
+public convertTupleConstructor :
+  OmlTupleConstructor ==>
+  JmlNewExpression
+convertTupleConstructor(e) ==
+  let s = e.getExpressionList(),
+      q = convertExpressionList(s),
+	  t = new JmlTupleType()
+  in return new JmlNewExpression(t,q);
+  
+  
+public convertExpressionList :
+  seq of OmlExpression ==>
+  seq of JmlExpression
+convertExpressionList(s) ==
+  return [ convertExpression(s(i)) | i in set inds s];
+  
+  
+public convertRecordExpression :
+  OmlRecordConstructor ==>
+  JmlNewExpression
+convertRecordExpression(e) ==
+  let n = e.getName(),
+      s = e.getExpressionList(),
+	  q = convertExpressionList(s),
+	  nn = convertName(n),
+	  t = new JmlClassName(nn)
+  in return new JmlNewExpression(t,q);
+  
+
+public convertApplyExpression :
+  OmlApplyExpression ==>
+  JmlApplyExpression
+convertApplyExpression(e) ==
+  let exp = e.getExpression(),
+      lst = e.getExpressionList(),
+	  nexp = convertExpression(exp),
+	  nlst = convertExpressionList(lst)
+  in return new JmlApplyExpression(nexp,nlst);
+  
+  
+public convertFieldSelect :
+  OmlFieldSelect ==>
+  JmlFieldSelectExpression
+convertFieldSelect(e) ==
+  let exp = e.getExpression(),
+      n = e.getName(),
+      nexp = convertExpression(exp),
+	  nn = convertName(n)
+  in return new JmlFieldSelectExpression(nexp,nn);
+
+
+public convertName :
+  OmlName ==>
+  JmlName
+convertName(n) ==
+  let c = n.getClassIdentifier(),
+      id = n.getIdentifier()
+  in return new JmlName(c,id);
+
+
+public convertNewExpression :
+  OmlNewExpression ==>
+  JmlNewExpression
+convertNewExpression(e) ==
+  let n = e.getName(),
+      l = e.getExpressionList(),
+	  nn = convertName(n),
+	  t = new JmlClassName(nn),
+	  nl = convertExpressionList(l)
+  in return new JmlNewExpression(t,nl);
+
+  
+public convertSelfExpression :
+  OmlSelfExpression ==>
+  JmlThisExpression
+convertSelfExpression(-) ==
+  return new JmlThisExpression();
+  
+  
+public convertIsExpression :
+  OmlIsExpression ==>
+  JmlInstanceOfExpression
+convertIsExpression(e) ==
+  let t = e.getType(),
+      exp = e.getExpression(),
+	  nt = convertType(t),
+	  nexp = convertExpression(exp)
+  in return new JmlInstanceOfExpression(nt,nexp);
+  
+
+public convertUndefinedExpression :
+  OmlUndefinedExpression ==>
+  JmlUndefinedExpression
+convertUndefinedExpression(-) ==
+  return new JmlUndefinedExpression();
+
+
+public convertIsOfClassExpression :
+  OmlIsofclassExpression ==>
+  JmlInstanceOfExpression
+convertIsOfClassExpression(e) ==
+  let n = e.getName(),
+      nn = convertName(n),
+	  t = new JmlClassName(nn),
+	  exp = e.getExpression(),
+	  nexp = convertExpression(exp)
+  in return new JmlInstanceOfExpression(t,nexp);
+
+
+public convertOldName :
+  OmlOldName ==>
+  JmlOldName
+convertOldName(n) ==
+  return new JmlOldName(n.getIdentifier());
+  
+  
+public convertLiteralExpression :
+  OmlSymbolicLiteralExpression ==>
+  JmlLiteralExpression
+convertLiteralExpression(e) ==
+  let lit = e.getLiteral(),
+      nlit = convertLiteral(lit)
+  in return new JmlLiteralExpression(nlit);
+
+
+-----------------------------------------------------
+-- Convert Literals ---------------------------------
+-----------------------------------------------------
+  
+  
+public convertLiteral :
+  IOmlLiteral ==>
+  IJmlLiteral
+convertLiteral(l) ==
+  cases true:
+    (isofclass(OmlNumericLiteral,l))
+	  -> convertNumericLiteral(l),
+	(isofclass(OmlRealLiteral,l))
+	  -> convertRealLiteral(l),
+	(isofclass(OmlBooleanLiteral,l))
+	  -> convertBooleanLiteral(l),
+	(isofclass(OmlNilLiteral,l))
+	  -> convertNilLiteral(l),
+	(isofclass(OmlCharacterLiteral,l))
+	  -> convertCharacterLiteral(l),
+	(isofclass(OmlTextLiteral,l))
+	  -> convertTextLiteral(l),
+	(isofclass(OmlQuoteLiteral,l))
+	  -> convertQuoteLiteral(l),
+	others 
+	  -> return new JmlNullLiteral()
+  end;
+  
+  
+public convertNumericLiteral :
+  OmlNumericLiteral ==>
+  JmlNumericalLiteral
+convertNumericLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlNumericalLiteral(val);
+  
+  
+public convertRealLiteral :
+  OmlRealLiteral ==>
+  JmlFloatLiteral
+convertRealLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlFloatLiteral(val);
+  
+  
+public convertBooleanLiteral :
+  OmlBooleanLiteral ==>
+  JmlBooleanLiteral
+convertBooleanLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlBooleanLiteral(val);
+  
+  
+public convertNilLiteral :
+  OmlNilLiteral ==>
+  JmlNullLiteral
+convertNilLiteral(-) ==
+  return new JmlNullLiteral();
+  
+  
+public convertCharacterLiteral :
+  OmlCharacterLiteral ==>
+  JmlCharacterLiteral
+convertCharacterLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlCharacterLiteral(val);
+  
+  
+public convertTextLiteral :
+  OmlTextLiteral ==>
+  JmlStringLiteral
+convertTextLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlStringLiteral(val);
+  
+  
+public convertQuoteLiteral :
+  OmlQuoteLiteral ==>
+  JmlEnumLiteral
+convertQuoteLiteral(n) ==
+  let val = n.getVal()
+  in return new JmlEnumLiteral(val);
+  
+
+end Vdm2Jml
+\end{lstlisting}
+\bigskip
+
+
+\section{Mapper from \jml\ to \vpp}
+
+\bigskip
+\begin{lstlisting}
+
+
+class Jml2Vdm
+
+
+operations
+
+public build_vdm : 
+  JmlSpecifications ==>
+  OmlSpecifications
+build_vdm(specs) ==
+  let classes = specs.getClassList(),
+      vdmclasses = convertJmlClasses(classes)
+  in return new OmlSpecifications(vdmclasses);
+
+
+public convertJmlClasses :
+  seq of JmlWrappedJmlClass ==>
+  seq of OmlClass
+convertJmlClasses(s) ==
+  return [convertJmlClass(s(i)) | i in set inds s];
+
+
+public convertJmlClass :
+  JmlWrappedJmlClass ==>
+  OmlClass
+convertJmlClass(c) ==
+  let cl = c.getClassVal(),
+      id = cl.getIdentifier(),
+	  ic = cl.getInheritanceClause(),
+	  ii = cl.getInterfaceInheritance(),
+	  ih = getInheritanceClauses(ic,ii),
+	  bd = cl.getClassBody(),
+	  body = convertClassBody(bd)
+  in return new OmlClass(id,[],ih,body,false);
+  
+
+public getInheritanceClauses :
+  [JmlClassInheritanceClause] *
+  [JmlInterfaceInheritanceClause] ==>
+  [IOmlInheritanceClause]
+getInheritanceClauses(c,i) == 
+  let s1 = getClassInheritance(c),
+      s2 = getInterfaceInheritance(i)
+  in if s1 = [] and s2 = [] 
+	 then return nil
+	 else return new OmlInheritanceClause(s1^s2);
+	 
+	 
+public getClassInheritance :
+  [JmlClassInheritanceClause] ==>
+  seq of (seq of char)
+getClassInheritance(c) ==
+  if c <> nil
+  then return [c.getIdentifierList()]
+  else return [[]];
+
+
+public getInterfaceInheritance :
+  [JmlInterfaceInheritanceClause] ==>
+  seq of (seq of char)
+getInterfaceInheritance(c) ==
+  if c <> nil
+  then return c.getIdentifierList()
+  else return [[]];
+
+
+public convertClassBody :
+  seq of IJmlDefinitionBlock ==>
+  seq of IOmlDefinitionBlock
+convertClassBody(s) == 
+  let l =  [ convertJmlBlock(s(i)) | i in set inds s],
+      q = removeNil(l)
+  in return q;
+  
+  
+public removeNil :
+  seq of [IOmlDefinitionBlock] ==>
+  seq of IOmlDefinitionBlock
+removeNil(s) ==
+  return [s(i) | i in set inds s & s(i) <> nil];
+
+
+public convertJmlBlock :
+  IJmlDefinitionBlock ==>
+  [IOmlDefinitionBlock]
+convertJmlBlock(b) ==
+  cases true:
+    (isofclass(JmlInstanceVariableDefinitions,b))
+	  -> return convertInstanceVariables(b),
+    (isofclass(JmlValueDefinitions,b))
+	  -> return convertValueDefinitions(b),
+    (isofclass(JmlInvariantDefinitions,b))
+	  -> return convertInvariantDefinitions(b),
+    (isofclass(JmlOperationDefinitions,b))
+	  -> return convertOperationDefinitions(b),
+	others
+	  -> return nil
+  end;
+
+
+------------------------------
+-- Instance Variables --------
+------------------------------
+
+
+public convertInstanceVariables :
+  JmlInstanceVariableDefinitions ==>
+  OmlInstanceVariableDefinitions
+convertInstanceVariables(s) == 
+  let jml_vars = s.getJmlVariables(),
+      java_vars = s.getJavaVariables(),
+	  vdm_1 = convertVariables(jml_vars),
+	  vdm_2 = convertVariables(java_vars),
+	  res = vdm_1 ^ vdm_2
+  in return new OmlInstanceVariableDefinitions(res);
+
+
+public convertVariables :
+  seq of JmlVariable ==>
+  seq of OmlInstanceVariable
+convertVariables(s) ==
+  return [ convertVariable(s(i)) | i in set inds s];
+
+
+public convertVariable :
+  JmlVariable ==>
+  OmlInstanceVariable
+convertVariable(v) == 
+  let oldaccess = v.getAccess(),
+      statickey = v.getStatickeyword(),
+      access = buildAccessDefinition(oldaccess,statickey),
+	  id = v.getIdentifier(),
+	  tp = v.getType(),
+	  expr = v.getExpression(),
+	  assign = createOmlAssignmentDefinition(id,tp,expr)
+  in return new OmlInstanceVariable(access,assign);
+
+
+public buildAccessDefinition :
+  JmlAccessDefinition *
+  bool ==>
+  OmlAccessDefinition
+buildAccessDefinition(a,stk) == 
+  let sc = a.getScope(),
+      val = sc.getValue(),
+	  scope = buildScope(val)
+  in return new OmlAccessDefinition(false,stk,scope);
+
+
+public buildScope :
+  nat ==>
+  OmlScope
+buildScope(n) == 
+  cases true:
+    (n = 0) 
+	  -> return new OmlScope(0),
+	(n = 1) 
+	  -> return new OmlScope(1),
+	(n = 2)
+	  -> return new OmlScope(3),
+	others
+	  -> return new OmlScope(2)
+  end;
+
+
+public createOmlAssignmentDefinition :
+  seq of char *
+  JmlType *
+  [JmlExpression] ==>
+  OmlAssignmentDefinition
+createOmlAssignmentDefinition(id,tp,expr) == 
+  let newtp = convertType(tp),
+      newexpr = convertExpression(expr)
+  in return new OmlAssignmentDefinition(id,newtp,newexpr);
+
+
+------------------------------
+-- Values --------------------
+------------------------------
+
+
+public convertValueDefinitions :
+  JmlValueDefinitions ==>
+  OmlValueDefinitions
+convertValueDefinitions(s) == 
+  let l = s.getValueList(),
+      q = convertValues(l)
+  in return new OmlValueDefinitions(q);
+
+
+public convertValues :
+  seq of JmlValueDefinition ==>
+  seq of OmlValueDefinition
+convertValues(s) ==
+  return [ convertValue(s(i)) | i in set inds s];
+
+
+public convertValue :
+  JmlValueDefinition ==>
+  OmlValueDefinition
+convertValue(v) ==
+  let access = v.getAccess(),
+      statkey = v.getStaticMod(),
+	  shape = v.getShape(),
+	  newaccess = buildAccessDefinition(access,statkey),
+	  newshape = convertValueShape(shape)
+  in return new OmlValueDefinition(newaccess,newshape);
+
+
+public convertValueShape :
+  JmlValueShape ==>
+  OmlValueShape
+convertValueShape(s) == 
+  let id = s.getIdentifier(),
+      tp = s.getType(),
+	  ex = s.getExpression(),
+	  newtp = convertType(tp),
+	  newex = convertExpression(ex),
+	  pat = new OmlPatternIdentifier(id)
+  in return new OmlValueShape(pat,newtp,newex);
+
+
+------------------------------
+-- Invariants ----------------
+------------------------------
+
+
+public convertInvariantDefinitions :
+  JmlInvariantDefinitions ==>
+  OmlInstanceVariableDefinitions
+convertInvariantDefinitions(s) == 
+  let l = s.getInvariantList(),
+      q = convertInvariants(l)
+  in return new OmlInstanceVariableDefinitions(q);
+
+
+public convertInvariants :
+  seq of JmlInvariantDefinition ==>
+  seq of OmlInstanceVariableInvariant
+convertInvariants(s) ==
+  return [ convertInvariant(s(i)) | i in set inds s];
+
+
+public convertInvariant :
+  JmlInvariantDefinition ==>
+  OmlInstanceVariableInvariant
+convertInvariant(i) == 
+  let expr = i.getPredicate(),
+      newexpr = convertExpression(expr)
+  in return new OmlInstanceVariableInvariant(newexpr);
+
+
+------------------------------
+-- Operations ----------------
+------------------------------
+
+
+public convertOperationDefinitions :
+  JmlOperationDefinitions ==>
+  OmlOperationDefinitions
+convertOperationDefinitions(s) == 
+  let list = s.getOperationList(),
+      newlist = convertOperations(list)
+  in return new OmlOperationDefinitions(newlist);
+
+
+public convertOperations :
+  seq of JmlOperationDefinition ==>
+  seq of OmlOperationDefinition
+convertOperations(s) ==
+  return [ convertOperation(s(i)) | i in set inds s];
+
+
+public convertOperation :
+  JmlOperationDefinition ==>
+  IOmlOperationDefinition
+convertOperation(op) ==
+  let access = op.getAccess(),
+      stat = op.getStatickeyword(),
+      newaccess = buildAccessDefinition(access,stat),
+	  id = op.getIdentifier(),
+	  t = op.getReturningType(),
+	  p = op.getParameterList(),
+	  tp = buildOperationType(t,p,id),
+	  params = buildParametersList(p),
+	  trl = op.getTrailer(),
+	  trailer = buildOperationTrailers(trl),
+      shape = new OmlImplicitOperation(id,params,tp,trailer)
+  in return new OmlOperationDefinition(newaccess,shape);
+
+
+public buildOperationType :
+  JmlType *
+  seq of JmlParameter *
+  seq of char ==>
+  seq of OmlIdentifierTypePair
+buildOperationType(t,s,id) ==
+  let tp = convertType(t),
+      ni = "var" ^ id
+  in return [new OmlIdentifierTypePair(ni,tp) ];
+
+
+public buildParametersList :
+  seq of JmlParameter ==>
+  seq of OmlPatternTypePair
+buildParametersList(s) == 
+  return [ buildParameter(s(i)) | i in set inds s];
+
+
+public buildParameter :
+  JmlParameter ==>
+  OmlPatternTypePair
+buildParameter(p) ==
+  let id = p.getIdentifier(),
+      tp = p.getType(),
+	  nt = convertType(tp),
+      pa = new OmlPatternIdentifier(id)
+  in return new OmlPatternTypePair([pa],nt);
+
+
+public buildOperationTrailers :
+  [JmlMethodSpecifications] ==>
+  OmlOperationTrailer
+buildOperationTrailers(specs) == 
+  if specs = nil
+  then return new OmlOperationTrailer(nil,nil,nil,nil)
+  else let sp = specs.getSpecs(),
+           al = specs.getAlso(),
+           s1 = sp.getList(),
+           s2 = al.getList(),
+           s = s1 ^ s2
+	   in return buildTrailers(s);
+
+
+--FIXME: if the operation has externals, it should be implicit
+public buildTrailers :
+  seq of IJmlOperationTrailer ==>
+  OmlOperationTrailer
+buildTrailers(s) ==
+  let list = joinTrailers(s),
+      pres = buildPreConditions(list),
+	  posts = buildPostConditions(list),
+	  extr = buildExternalConditions(list),
+	  excp = buildExceptionalConditions(list)
+  in return new OmlOperationTrailer(extr,pres,posts,excp);
+
+
+public buildPreConditions :
+  seq of IJmlTrailers ==>
+  [IOmlExpression]
+buildPreConditions(s) == 
+  let l = [ s(i) | i in set inds s & 
+          isofclass(JmlRequiresClause,s(i))]
+  in return buildPreConditionsHelper(l);
+  
+  
+public buildPreConditionsHelper :
+  seq of JmlRequiresClause ==>
+  [IOmlExpression]
+buildPreConditionsHelper(s) ==
+  if len s = 0 then return nil else
+  let l = [ convertPreCondition(s(i)) | i in set inds s]
+  in return landExpression(l);
+  
+  
+public landExpression :
+  seq of OmlExpression ==>
+  IOmlExpression
+landExpression(s) ==
+  if len s = 1 then return hd s else
+  let op = new OmlBinaryOperator(10),
+      lhs = hd s,
+	  rhs = landExpression(tl s)
+  in return new OmlBinaryExpression(lhs,op,rhs);
+ 
+
+public buildPostConditions :
+  seq of IJmlTrailers ==>
+  [OmlExpression]
+buildPostConditions(s) == 
+  let l = [ s(i) | i in set inds s & 
+          isofclass(JmlEnsuresClause,s(i))]
+  in return buildPostConditionsHelper(l);
+
+
+public buildPostConditionsHelper :
+  seq of JmlEnsuresClause ==>
+  [IOmlExpression]
+buildPostConditionsHelper(s) ==
+  if len s = 0 then return nil else
+  let l = [ convertPostCondition(s(i)) | i in set inds s]
+  in return landExpression(l);
+
+
+public buildExternalConditions :
+  seq of IJmlTrailers ==>
+  [OmlExternals]
+buildExternalConditions(s) == 
+  if len s = 0 then return nil else 
+  let l = [ convertAssignableClause(s(i)) 
+		  | i in set inds s & isofclass(JmlAssignableClause,s(i)) ]
+  in return new OmlExternals(conc l);
+
+
+public buildExceptionalConditions :
+  seq of IJmlTrailers ==>
+  [OmlExceptions]
+buildExceptionalConditions(s) == 
+  if len s = 0 then return nil else
+  let l = [ convertSignalsClause(s(i)) 
+          | i in set inds s & isofclass(JmlSignalsClause,s(i)) ]
+  in return new OmlExceptions(l);
+
+
+public joinTrailers :
+  seq of IJmlOperationTrailer ==>
+  seq of IJmlTrailers
+joinTrailers(s) ==
+  return conc [ getTrailers(s(i)) | i in set inds s ];
+
+
+public getTrailers :
+  IJmlOperationTrailer ==>
+  seq of IJmlTrailers
+getTrailers(t) ==
+  cases true:
+    (isofclass(JmlBehaviourSpec,t))
+	  -> return getTrailerList(t),
+	(isofclass(JmlExceptionalSpec,t))
+	  -> return getTrailerList(t),
+	others
+	  -> return getTrailerList(t)
+  end;
+  
+  
+public getTrailerList :
+  JmlBehaviourSpec ==>
+  seq of JmlTrailers
+getTrailerList(s) ==
+  return s.getList();
+
+
+public convertPostCondition :
+  JmlEnsuresClause ==>
+  OmlExpression
+convertPostCondition(e) ==
+  let expr = e.getEnsuresExpression(),
+      nexp = convertExpression(expr)
+  in return nexp;
+  
+  
+public convertPreCondition :
+  JmlRequiresClause ==>
+  OmlExpression
+convertPreCondition(e) ==
+  let expr = e.getRequiresExpression(),
+      nexp = convertExpression(expr)
+  in return nexp;  
+
+
+public convertAssignableClause :
+  JmlAssignableClause ==>
+  seq of OmlVarInformation
+convertAssignableClause(a) ==
+  let l = a.getAssignableList(),
+      mode = new OmlMode(0),
+	  nl = buildNames(l),
+	  s = buildVarInformation(nl,mode)
+  in return s;
+  
+  
+public buildNames :
+  seq of (seq of char) ==>
+  seq of OmlName
+buildNames(s) ==
+  return [ buildName(s(i)) | i in set inds s];
+
+
+public buildName :
+  seq of char ==>
+  OmlName
+buildName(s) ==
+  return new OmlName(nil,s);
+  
+  
+public buildVarInformation :
+  seq of OmlName *
+  OmlMode ==>
+  seq of OmlVarInformation
+buildVarInformation(s,m) ==
+  let var = new OmlVarInformation(m,s,nil)
+  in return [ var ];
+
+
+public convertSignalsClause :
+  JmlSignalsClause ==>
+  OmlError
+convertSignalsClause(s) ==
+  let exc = s.getException(),
+      prd = s.getPredicate(),
+	  npred = convertExpression(prd),
+	  id = getIdFromException(exc),
+	  expr = buildFalseExpression()
+  in return new OmlError(id,npred,expr);
+
+
+public getIdFromException :
+  JmlException ==>
+  seq of char
+getIdFromException(e) ==
+  return e.getIdentifier();
+
+
+public buildFalseExpression :
+  () ==>
+  OmlSymbolicLiteralExpression
+buildFalseExpression() ==
+  let f = new OmlBooleanLiteral(false),
+      expr = new OmlSymbolicLiteralExpression(f)
+  in return expr;
+
+
+------------------------------
+-- Types ---------------------
+------------------------------
+
+
+public convertType :
+  IJmlType ==>
+  IOmlType
+convertType(t) == 
+  cases true:
+    (isofclass(JmlCharType,t))
+	  -> return new OmlCharType(),
+	(isofclass(JmlBoolType,t))
+	  -> return new OmlBoolType(),
+	(isofclass(JmlEnumerationType,t))
+	  -> return convertEnumerationType(t),
+	(isofclass(JmlIntegerType,t))
+	  -> return new OmlIntType(),
+	(isofclass(JmlFloatType,t))
+	  -> return new OmlRealType(),
+	(isofclass(JmlMapValueToValueType,t))
+	  -> return convertMapType(t),
+	(isofclass(JmlSetValueType,t))
+	  -> return convertSetType(t),
+	(isofclass(JmlSeqValueType,t))
+	  -> return convertSeqType(t),
+	(isofclass(JmlObjectType,t))
+	  -> return new OmlTokenType(),
+	(isofclass(JmlVoidType,t))
+	  -> return new OmlEmptyType(),
+	(isofclass(JmlTupleType,t))
+	  -> return convertTupleType(t),
+	(isofclass(JmlNatType,t))
+	  -> return new OmlNatType(),
+	(isofclass(JmlClassType,t))
+	  -> return convertClassType(t),
+	(isofclass(JmlClassName,t))
+	  -> return convertClassName(t),
+	others
+	  -> return new OmlEmptyType()
+  end;
+
+
+public convertEnumerationType :
+  JmlEnumerationType ==>
+  OmlQuoteType
+convertEnumerationType(enum) ==
+  let lit = enum.getEnumLiteral(),
+      newlit = convertLiteral(lit)
+  in return new OmlQuoteType(newlit);
+
+
+public convertMapType :
+  JmlMapValueToValueType ==>
+  OmlGeneralMapType
+convertMapType(m) ==
+  let domtp = m.getDomType(),
+      rngtp = m.getRngType(),
+	  tpd = convertType(domtp),
+	  tpr = convertType(rngtp)
+  in return new OmlGeneralMapType(tpd,tpr);
+
+
+public convertSetType :
+  JmlSetValueType ==>
+  OmlSetType
+convertSetType(s) ==
+  let tp = s.getType(),
+      newtp = convertType(tp)
+  in return new OmlSetType(newtp);
+
+
+public convertSeqType :
+  JmlSeqValueType ==>
+  OmlSeq0Type
+convertSeqType(s) ==
+  let tp = s.getType(),
+      newtp = convertType(tp)
+  in return new OmlSeq0Type(newtp);
+
+
+public convertTupleType :
+  JmlTupleType ==>
+  OmlProductType
+convertTupleType(t) ==
+  let tps = t.getVals()
+  in cases true:
+       (len tps = 0)
+	     -> let t1 = new OmlEmptyType(),
+		        t2 = new OmlEmptyType()
+            in return new OmlProductType(t1,t2),
+	   (len tps = 1)
+	     -> let t1 = hd tps,
+		        nt = convertType(t1),
+		        t2 = new OmlEmptyType()
+            in return new OmlProductType(nt,t2),
+	   others 
+	     -> let t1 = hd tps,
+		        lhs = convertType(t1),
+				rhs = convertRhsTypes(tl tps)
+		    in return new OmlProductType(lhs,rhs)
+     end;
+  
+  
+public convertRhsTypes :
+  seq of JmlType ==>
+  IOmlType
+convertRhsTypes(s) == 
+  if len s = 1
+  then let tp = hd s,
+           nt = convertType(tp)
+	   in return nt
+  else let tp = hd s,
+           lhs = convertType(tp),
+		   rhs = convertRhsTypes(tl s)
+	   in return new OmlProductType(lhs,rhs);
+  
+  
+public convertClassType :
+  JmlClassType ==>
+  OmlCompositeType
+convertClassType(c) ==
+  let id = c.getId(),
+	  fl = c.getFieldList(),
+	  newfl = convertFieldList(fl)
+  in return new OmlCompositeType(id,newfl);
+
+
+public convertFieldList :
+  seq of JmlField ==>
+  seq of OmlField
+convertFieldList(s) ==
+  return [ convertField(s(i)) | i in set inds s];
+
+
+public convertField :
+  JmlField ==>
+  OmlField
+convertField(f) ==
+  let id = f.getId(),
+      tp = f.getType(),
+	  newtp = convertType(tp)
+  in return new OmlField(id,newtp,false);
+
+
+public convertClassName :
+  JmlClassName ==>
+  OmlTypeName
+convertClassName(n) ==
+  let name = n.getId(),
+      newname = convertName(name)
+  in return new OmlTypeName(newname);
+
+
+------------------------------
+-- Expressions ---------------
+------------------------------
+
+
+public convertExpression :
+  IJmlExpression ==>
+  IOmlExpression
+convertExpression(e) ==  
+  cases true:
+    (isofclass(JmlBracketedExpression,e))
+	  -> return convertBracketedExpression(e),
+	  (isofclass(JmlIfExpression,e))
+	  -> return convertIfExpression(e),
+	  (isofclass(JmlUnaryExpression,e))
+	  -> return convertUnaryExpression(e),
+	  (isofclass(JmlBinaryExpression,e))
+	  -> return convertBinaryExpression(e),
+	  (isofclass(JmlForAllExpression,e))
+	  -> return convertForAllExpression(e),
+	  (isofclass(JmlExistsExpression,e))
+	  -> return convertExistsExpression(e),
+	  (isofclass(JmlOldName,e))
+	  -> return convertOldName(e),
+	  (isofclass(JmlNewExpression,e))
+	  -> return convertNewExpression(e),
+	  (isofclass(JmlNewExpression,e))
+	  -> return convertName(e),
+	  (isofclass(JmlSetEnumeration,e))
+	  -> return convertSetEnumeration(e),
+	  (isofclass(JmlSequenceEnumeration,e))
+	  -> return convertSequenceEnumeration(e),
+	  (isofclass(JmlMapEnumeration,e))
+	  -> return convertMapEnumeration(e),
+	  (isofclass(JmlApplyExpression,e))
+	  -> return convertApplyExpression(e),
+	  (isofclass(JmlFieldSelectExpression,e))
+	  -> return convertFieldSelect(e),
+	  (isofclass(JmlLiteralExpression,e))
+	  -> return convertLiteralExpression(e),
+	  (isofclass(JmlBlockExpression,e))
+	  -> return convertBlockExpression(e),
+	  (isofclass(JmlThisExpression,e))
+	  -> return convertThisExpression(e),
+	  (isofclass(JmlInstanceOfExpression,e))
+	  -> return convertInstanceOf(e),
+	  others
+      -> return new OmlUndefinedExpression() 
+  end;
+  
+  
+public convertBracketedExpression :
+  JmlBracketedExpression ==>
+  OmlBracketedExpression
+convertBracketedExpression(e) ==
+  let expr = e.getExpression(),
+      nexp = convertExpression(expr)
+  in return new OmlBracketedExpression(nexp);
+  
+  
+public convertIfExpression :
+  JmlIfExpression ==>
+  OmlIfExpression
+convertIfExpression(e) ==
+  let ifexp = e.getIfExpression(),
+      thenexp = e.getThenExpression(),
+	  elseexp = e.getElseExpression(),
+	  nif = convertExpression(ifexp),
+	  nthen = convertExpression(thenexp),
+	  nelse = convertExpression(elseexp)
+  in return new OmlIfExpression(nif,nthen,[],nelse);
+
+
+public convertUnaryExpression :
+  JmlUnaryExpression ==>
+  OmlUnaryExpression
+convertUnaryExpression(e) ==
+  let op = e.getOperator(),
+      ex = e.getExpression(),
+	  nop = convertOperator(op),
+	  nex = convertExpression(ex)
+  in return new OmlUnaryExpression(nop,nex);
+
+
+public convertOperator :
+  JmlUnaryOperator ==>
+  OmlUnaryOperator
+convertOperator(op) == 
+  let val = op.getValue() in
+  cases true:
+    (val = 4)
+	  -> return new OmlUnaryOperator(0),
+	(val = 5)
+	  -> return new OmlUnaryOperator(1),
+	(val = 10)
+	  -> return new OmlUnaryOperator(2),
+	(val = 7)
+	  -> return new OmlUnaryOperator(3),
+	(val = 2)
+	  -> return new OmlUnaryOperator(5),
+	(val = 0)
+	  -> return new OmlUnaryOperator(6),
+	(val = 6)
+	  -> return new OmlUnaryOperator(8),
+	(val = 14)
+	  -> return new OmlUnaryOperator(9),
+	(val = 12)
+	  -> return new OmlUnaryOperator(10),
+	(val = 8)
+	  -> return new OmlUnaryOperator(11),
+	(val = 15)
+	  -> return new OmlUnaryOperator(14),
+	(val = 1)
+	  -> return new OmlUnaryOperator(15),
+	(val = 13)
+	  -> return new OmlUnaryOperator(16),
+	(val = 3)
+	  -> return new OmlUnaryOperator(17),
+	others
+	  -> return new OmlUnaryOperator()
+  end;
+
+
+public convertBinaryExpression :
+  JmlBinaryExpression ==>
+  OmlBinaryExpression
+convertBinaryExpression(e) ==
+  let lhs = e.getLhsExpression(),
+	  op  = e.getOperator(),
+	  rhs = e.getRhsExpression(),
+	  nlhs = convertExpression(lhs),
+	  nop = convertBinaryOperator(op),
+	  nrhs = convertExpression(rhs)
+  in return new OmlBinaryExpression(nlhs,nop,nrhs);
+
+
+public convertBinaryOperator :
+  JmlBinaryOperator ==>
+  OmlBinaryOperator
+convertBinaryOperator(op) ==
+  let val = op.getValue() in
+  cases true:
+    (val = 1)
+	  -> return new OmlBinaryOperator(18),
+	(val = 2)
+	  -> return new OmlBinaryOperator(23),
+	(val = 3)
+	  -> return new OmlBinaryOperator(13),
+	(val = 6)
+	  -> return new OmlBinaryOperator(22),
+	(val = 7)
+	  -> return new OmlBinaryOperator(33),
+	(val = 8)
+	  -> return new OmlBinaryOperator(1),
+	(val = 10)
+	  -> return new OmlBinaryOperator(16),
+	(val = 11)
+	  -> return new OmlBinaryOperator(0),
+	(val = 12)
+	  -> return new OmlBinaryOperator(12),
+	(val = 13)
+	  -> return new OmlBinaryOperator(4),
+	(val = 14)
+	  -> return new OmlBinaryOperator(15),
+	(val = 16)
+	  -> return new OmlBinaryOperator(28),
+	(val = 19)
+	  -> return new OmlBinaryOperator(6),
+	(val = 20)
+	  -> return new OmlBinaryOperator(34),
+	(val = 21)
+	  -> return new OmlBinaryOperator(32),
+	(val = 22)
+	  -> return new OmlBinaryOperator(2),
+	(val = 23)
+	  -> return new OmlBinaryOperator(8),
+	(val = 24)
+	  -> return new OmlBinaryOperator(30),
+	(val = 25)
+	  -> return new OmlBinaryOperator(31),
+	(val = 26)
+	  -> return new OmlBinaryOperator(14),
+	(val = 27)
+	  -> return new OmlBinaryOperator(7),
+	(val = 30)
+	  -> return new OmlBinaryOperator(21),
+	(val = 31)
+	  -> return new OmlBinaryOperator(24),
+	(val = 32)
+	  -> return new OmlBinaryOperator(19),
+	(val = 33)
+	  -> return new OmlBinaryOperator(9),
+	others
+	  -> return new OmlBinaryOperator()
+  end;
+
+
+public convertForAllExpression :
+  JmlForAllExpression ==>
+  OmlForAllExpression
+convertForAllExpression(e) ==
+  let bind = e.getBindList(),
+      expr = e.getExpression(),
+	  nexp = getQuantifierExpression(expr),
+	  nbind = convertBind(bind)
+  in return new OmlForAllExpression(nbind,nexp);
+
+
+public getQuantifierExpression :
+  seq of IJmlExpression ==>
+  IOmlExpression
+getQuantifierExpression(s) ==
+  if len s = 0
+  then let lit = new OmlBooleanLiteral(true),
+		   exp = new OmlSymbolicLiteralExpression(lit)
+       in return exp
+  else let fst = hd(s),
+           lhs = convertExpression(fst),
+           op = new OmlBinaryOperator(10),
+           rhs = getQuantifierExpression(tl(s))
+       in return new OmlBinaryExpression(lhs,op,rhs);
+
+
+public convertBind :
+  JmlQuantifierDeclaration ==>
+  seq of IOmlBind
+convertBind(q) ==
+  let tp = q.getType(),
+      ntp = convertType(tp),
+	  var = q.getVars(),
+	  pat = buildPatternIdentifiers(var),
+	  bind = new OmlTypeBind(pat,ntp)
+  in return [bind];
+  
+
+public buildPatternIdentifiers :
+  seq of (seq of char) ==>
+  seq of IOmlPattern
+buildPatternIdentifiers(s) ==
+  return [ new OmlPatternIdentifier(s(i)) | i in set inds s];
+
+
+public convertExistsExpression :
+  JmlExistsExpression ==>
+  OmlExistsExpression
+convertExistsExpression(e) ==
+  let bind = e.getBindList(),
+      expr = e.getExpression(),
+	  nexp = getQuantifierExpression(expr),
+	  nbind = convertBind(bind)
+  in return new OmlExistsExpression(nbind,nexp);
+
+
+public convertOldName :
+  JmlOldName ==>
+  OmlOldName
+convertOldName(o) ==
+  let id = o.getIdentifier()
+  in return new OmlOldName(id);
+  
+  
+public convertNewExpression :
+  JmlNewExpression ==>
+  OmlNewExpression
+convertNewExpression(e) ==
+  let t = e.getType(),
+      t1 = getTypeName(t),
+	  nt = convertName(t1),
+	  l = e.getExpressionList(),
+	  nl = convertExpressionList(l)
+  in return new OmlNewExpression(nt,[],nl);
+
+
+public getTypeName :
+  IJmlType ==>
+  JmlName
+getTypeName(t) ==
+  cases true:
+    (isofclass(JmlClassName,t))
+	  -> return getClassName(t),
+	others
+	  -> return new JmlName(nil,[])
+  end;
+
+
+public getClassName :
+  JmlClassName ==>
+  JmlName
+getClassName(c) ==
+  return c.getId();
+
+
+public convertName :
+  IJmlName ==>
+  IOmlName
+convertName(n) ==
+  let cl = n.getClassIdentifier(),
+      id = n.getIdentifier()
+  in return new OmlName(cl,id);
+
+
+public convertExpressionList :
+  seq of [JmlExpression] ==>
+  seq of OmlExpression
+convertExpressionList(s) ==
+  return [ convertExpression(s(i)) 
+         | i in set inds s & s(i) <> nil];
+
+
+public convertSetEnumeration :
+  JmlSetEnumeration ==>
+  OmlSetEnumeration
+convertSetEnumeration(e) ==
+  let l = e.getList(),
+      q = convertExpressionList(l)
+  in return new OmlSetEnumeration(q);
+
+
+public convertSequenceEnumeration :
+  JmlSequenceEnumeration ==>
+  OmlSequenceEnumeration
+convertSequenceEnumeration(e) ==
+  let l = e.getList(),
+      q = convertExpressionList(l)
+  in return new OmlSequenceEnumeration(q);
+
+
+public convertMapEnumeration :
+  JmlMapEnumeration ==>
+  OmlMapEnumeration
+convertMapEnumeration(e) ==
+  let ml = e.getList(),
+      nm = convertMapletList(ml)
+  in return new OmlMapEnumeration(nm);
+
+
+public convertMapletList :
+  seq of JmlMapLet ==>
+  seq of OmlMaplet
+convertMapletList(s) ==
+  return [ convertMaplet(s(i)) | i in set inds s];
+
+
+public convertMaplet :
+  JmlMapLet ==>
+  OmlMaplet
+convertMaplet(m) ==
+  let dval = m.getDomVal(),
+      rval = m.getRngVal(),
+	  ndom = convertExpression(dval),
+	  nrng = convertExpression(rval)
+  in return new OmlMaplet(ndom,nrng);
+
+
+public convertApplyExpression :
+  JmlApplyExpression ==>
+  OmlApplyExpression
+convertApplyExpression(e) ==
+  let expr = e.getExpression(),
+      expl = e.getExpressionList(),
+	  nexpr = convertExpression(expr),
+	  nexpl = convertExpressionList(expl)
+  in return new OmlApplyExpression(nexpr,nexpl);
+
+
+public convertFieldSelect :
+  JmlFieldSelectExpression ==>
+  OmlFieldSelect
+convertFieldSelect(f) ==
+  let expr = f.getExpression(),
+      name = f.getName(),
+	  nexp = convertExpression(expr),
+	  newname = convertName(name)
+  in return new OmlFieldSelect(nexp,newname);
+
+
+public convertLiteralExpression :
+  JmlLiteralExpression ==>
+  OmlSymbolicLiteralExpression
+convertLiteralExpression(e) ==
+  let lit = e.getLit(),
+      nlit = convertLiteral(lit)
+  in return new OmlSymbolicLiteralExpression(nlit);
+
+
+public convertBlockExpression :
+  JmlBlockExpression ==>
+  OmlLetExpression
+convertBlockExpression(e) ==
+  let bind = e.getBind(),
+      expr = e.getReturnExpr(),
+	  nexp = convertExpression(expr),
+	  nbind = convertValueShapes(bind)
+  in return new OmlLetExpression(nbind,nexp);
+
+
+public convertValueShapes :
+  seq of JmlValueShape ==>
+  seq of OmlValueShape
+convertValueShapes(s) ==
+  return [ convertValueShape(s(i)) | i in set inds s];
+  
+  
+public convertThisExpression :
+  JmlThisExpression ==>
+  OmlSelfExpression
+convertThisExpression(-) ==
+  return new OmlSelfExpression();
+
+
+public convertInstanceOf :
+  JmlInstanceOfExpression ==>
+  OmlIsExpression
+convertInstanceOf(i) ==
+  let tp = i.getType(),
+      ex = i.getExpression(),
+	  nt = convertType(tp),
+	  ne = convertExpression(ex)
+  in return new OmlIsExpression(nt,ne);
+
+
+------------------------------
+-- Literals ------------------
+------------------------------
+
+
+public convertLiteral :
+  IJmlLiteral ==>
+  IOmlLiteral
+convertLiteral(lit) == 
+  cases true:
+    (isofclass(JmlNumericalLiteral,lit))
+	  -> return convertNumericalLiteral(lit),
+    (isofclass(JmlFloatLiteral,lit))
+	  -> return convertFloatLiteral(lit),
+    (isofclass(JmlEnumLiteral,lit))
+	  -> return convertEnumLiteral(lit),
+    (isofclass(JmlBooleanLiteral,lit))
+	  -> return convertBooleanLiteral(lit),
+    (isofclass(JmlCharacterLiteral,lit))
+	  -> return convertCharacterLiteral(lit),
+    (isofclass(JmlStringLiteral,lit))
+	  -> return convertStringLiteral(lit),
+	(isofclass(JmlNullLiteral,lit))
+	  -> return new OmlNilLiteral(),
+	others
+	  -> return new OmlNilLiteral()
+  end;
+
+
+public convertNumericalLiteral :
+  JmlNumericalLiteral ==>
+  OmlNumericLiteral
+convertNumericalLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlNumericLiteral(val);
+
+
+public convertFloatLiteral :
+  JmlFloatLiteral ==>
+  OmlRealLiteral
+convertFloatLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlRealLiteral(val);
+
+
+public convertEnumLiteral :
+  JmlEnumLiteral ==>
+  OmlQuoteLiteral
+convertEnumLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlQuoteLiteral(val);
+
+
+public convertBooleanLiteral :
+  JmlBooleanLiteral ==>
+  OmlBooleanLiteral
+convertBooleanLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlBooleanLiteral(val);
+
+
+public convertCharacterLiteral :
+  JmlCharacterLiteral ==>
+  OmlCharacterLiteral
+convertCharacterLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlCharacterLiteral(val);
+
+
+public convertStringLiteral :
+  JmlStringLiteral ==>
+  OmlTextLiteral
+convertStringLiteral(lit) ==
+  let val = lit.getVal()
+  in return new OmlTextLiteral(val);
+
+
+end Jml2Vdm
+
+\end{lstlisting}
+\bigskip

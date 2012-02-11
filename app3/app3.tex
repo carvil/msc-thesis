@@ -1,0 +1,106 @@
+\chapter{Input/Output Stream}
+\label{appendix3}
+
+
+In this appendix, the specification of the case study Input/Output Stream is presented. Each section contains the specification and the results of applying the mapper, of one class. Thus, section \ref{app3:io} contains the \vpp\ specification of the \textit{IO} class and the resulting \jml\ specification, after applying the mapper. The same happens for each of the other classes.
+
+
+\section{IO}
+\label{app3:io}
+
+\subsection{Specification}
+
+\lstset{style=mystyle}
+\bigskip
+\begin{lstlisting}
+class IO
+
+types
+
+public byte = nat;
+
+operations 
+
+public read : seq of byte  ==> nat
+read(b) == is subclass responsibility;
+
+public write : seq of byte  ==> ()
+write(b) == is subclass responsibility;
+
+public close : () ==> ()
+close() == is subclass responsibility;
+
+end IO
+\end{lstlisting}
+\bigskip
+
+
+\section{InputStream}
+
+\subsection{Specification}
+
+\lstset{style=mystyle}
+\bigskip
+\begin{lstlisting}
+class InputStream is subclass of IO
+
+operations
+
+public read : seq of byte ==> nat
+read(b) == is not yet specified;
+
+public close : () ==> ()
+close() == is not yet specified;
+
+
+end InputStream
+\end{lstlisting}
+\bigskip
+
+
+\section{OutputStream}
+
+\subsection{Specification}
+
+\lstset{style=mystyle}
+\bigskip
+\begin{lstlisting}
+class OutputStream is subclass of IO
+
+operations
+
+public write : seq of byte ==> ()
+write(b) == is not yet specified;
+
+public close : () ==> ()
+close() == is not yet specified;
+
+end OutputStream
+\end{lstlisting}
+\bigskip
+
+
+\section{IOStream}
+
+\subsection{Specification}
+
+\lstset{style=mystyle}
+\bigskip
+\begin{lstlisting}
+class IOStream is subclass of InputStream, OutputStream
+
+operations
+
+public read : seq of byte ==> nat
+read(b) == is not yet specified;
+
+public write : seq of byte  ==> ()
+write(b) == is not yet specified;
+
+public close : () ==> ()
+close() == is not yet specified;
+
+end IOStream
+\end{lstlisting}
+\bigskip
+

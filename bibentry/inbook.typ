@@ -1,0 +1,20 @@
+
+%G
+@INBOOK{,
+  KEY           = "",
+  AUTHOR        = "",
+  EDITOR        = "",
+  TITLE         = "",
+  CHAPTER       = "",
+  PAGES         = "",
+  PUBLISHER     = "",
+  ADDRESS       = "",
+  YEAR          = "",
+  MONTH         = "",
+  VOLUME        = "",
+  SERIES        = "",
+  EDITION       = "",
+  SIZE          = "",
+  NOTE          = "",
+  ANNOTE        = "",
+  COMMENT       = ""}

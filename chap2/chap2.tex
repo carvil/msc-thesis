@@ -1,0 +1,271 @@
+% ********** Chapter 2 **********
+\chapter{Conceptual Analysis}
+\label{sec:chapter2}
+
+\section{Usage and Applicability of \jml}
+
+The \jml\ descriptions can simply be inserted in a large variety of files and are written in special \java\ comments, 
+similar to traditional Javadoc \cite{leavens-Baker-Ruby99b}.
+The syntax used by the \jml\ is very similar to the \java\ syntax. Besides some reserved words used to express the semantic 
+meaning of the \jml\ features, the leftovers of the syntax is the same as the \java\ syntax. This allows a quicker introduction of \java\ 
+programmers to this specification language.
+
+Taking into consideration all the features presented in the \jml\ and explained so far, it becomes necessary to present 
+the reasons why one should use this behavioural interface specification language.
+After making a thorough analysis of the \jml, one can say that there are two major good reasons to use it \cite{leavens-etal07}:
+\begin{enumerate}
+\item Precise and unambiguous specification of the behaviour of \java\ modules and documentation of \java\ code;
+\item Tool support available \cite{leavens-Cheon-Cok05}.
+\end{enumerate}
+Each of the two reasons presented above will now be analysed carefully.
+
+Analysing the first reason, it states that \jml\ is a precise and unambiguous specification language for the behaviour of \java\ 
+modules and documentation of \java\ code.
+
+First of all, there are two different roles that the \jml\ can take here: it can be used as a behavioural specification 
+language for \java\ modules; it can also take a role as documentation annotations for \java\ code.
+Using the \jml\ as a specification language, one can see that it establishes \textit{contracts} between classes/interfaces, which act 
+as controllers between the interactions of classes/interfaces. The invalid use of objects, classes or methods is forbidden by 
+clauses, and these can be checked at runtime.
+
+Using \jml\ as formal documentation could also an advantage, considering the following sentence. 
+One can separate the code from the specification, and then we can 
+see how the contract is established clearly, opposing to the ambiguous natural language of common \java\ documentation.
+There are users (e.g.\ those not familiarized with software engineering) that do not care about implementation details, 
+but they care about the specification issues evolved. In this 
+way, they can have a clear overview of the behaviour of \java\ classes/interfaces.
+
+It is also possible to analyse in a formal way certain properties or a design, perform formal verification or reasoning about the 
+correctness of the code in a more clear fashion.
+Secondly, the variety of tool support available is also an strong area for the \jml.
+
+\jml\ has a variety of tool supporting features such as parsing and type checking, static analysis, formal verification, 
+recording of dynamically obtained invariants, runtime assertion checking and unit testing \cite{leavens-Cheon-Cok05}.
+
+After observing these two reasons presented in the text above, it is possible to conclude that \jml\ is a strong specification language, 
+with similar semantic features of the \vpp\ specification language, which lead us to a first expectation that a 
+sensible connection between \jml\ and \vpp\ should be possible to obtain.
+
+\section{Object-Oriented Key Features}
+
+\subsection{Inheritance}
+\label{chap2:sec:inh}
+
+One of the most important concepts in the \writeterm{Object-Oriented paradigm} is inheritance. Both Java (with and without JML assertions) and VDM++ are Object-Oriented languages playing different roles: while VDM++ is used for modelling purposes \cite{Fitzgerald&05}, Java is used to implementation purposes. Besides this slight difference, there are also some differences concerning to  the usage of the concepts of the Object-Oriented paradigm. One of those differences is inheritance.This concept is used differently in Java with JML assertions and VDM++, and the objective of this section is to explain those differences.
+
+Java is strict concerning inheritance in the sense that it does not allow multiple class inheritance. However \java\  does allow multiple interface inheritance. The reason behind this restriction of multiple class Inheritance is due to the basic principles of Java design. It is believed that multiple class inheritance causes more problems than it actually solves and thus conflicts with one of the Java rules which states that Java should be simple and familiar. On the other side, VDM++ allows multiple class inheritance.
+This is a very serious challenge, if one is considering connecting VDM++ with JML. If one has a model in VDM++ that takes advantage of multiple Inheritance, and wants to move it to JML, it is necessary to have an answer to this problem. 
+
+The adopted solution will be promote all classes but one to interfaces, when moving from \vpp\ to \jml. This way, if such conversion is possible, the multiple inheritance problem is solved. On the other hand, if it is not possible to convert the necessary \vpp\ classes to \java\ interfaces, the user must change the specification in order to continue.
+
+Concerning to specification inheritance, both JML and VDM++ have similar behaviour.
+The specification inheritance in JML guarantees that all subtypes are behavioural subtypes. Thus, all subtypes inherit the specifications from its supertype, including private specifications and fields, although they are not visible. For more details about visibility, see section \ref{chap2:visib}.
+
+All the method assertions are also inherited under the same principles of visibility mentioned above and the supertype invariant must also hold in the subtype.
+
+Each assertion presented in a JML supertype must be in conformance with the assertions present in the subtype, building stronger conditions for the subtypes.
+
+In VDM++, the inheritance comprehends instance variables, invariants and their restrictions on the allowed modifications of the state (visibility), operations and functions (including assertions, e.g. Pre-conditions), value and type definitions and at last synchronization definitions.
+
+\subsection{Visibility}
+\label{chap2:visib}
+
+There is a need of comparing the visibility between \vpp\ and \jml. However, since \jml\ is a specification language for \java, there is also a need of study the visibility rules of \java\ and understand how they are related, if so.
+
+In \vpp\ the attributes can be divided in two types: class attributes or instance attributes. 
+Those attributes can be functions, operations, instance variables or constants. Moreover, the type construct is always a static attribute; on the other hand, the thread and the synchronization constructs are always instance attributes.
+
+The default attribute type for \vpp\ constructs is instance, and if ones want to specify a static attribute must use the keyword \textit{static}.
+
+Concerning the accessibility, it may be explicitly defined using three different keywords \cite{langmanpp}: public, private and protected. Those three constructs are explained below.
+
+\begin{description}
+\item{\textit{Public:}} Any class may use such members, with no restrictions; 
+\item{\textit{Private:}} No other class but the one where the definition is written may use those members;
+\item{\textit{Protected:}} Only subclasses of the class where the definition is written may use those members.
+\end{description}
+Finally, the default value for accessibility in \vpp\ in case there is no explicit definition is private.
+
+Before starting the explanation about visibility in \jml, it is important to see \java\ rules about this issue. 
+In \java, there is also a separation of attributes in instance attributes or class attributes. The semantic meaning of this two types is the same as in \vpp.
+
+Concerning the accessibility, besides the three constructs defined above which have the same semantic meaning in \java, there is also another access modifier called \textit{default}. This modifier, also known as \textit{package private}, states that a given attribute is accessible only inside the package where it is defined. This is the default value when no other is used, thus there is no keyword associated to it.
+
+On top of \java, it is possible to append \jml\ assertions, which imposes extra rules in addition to the \java\ rules about visibility.
+
+Any \jml\ assertion such as an invariant or a method specification cannot refer to names that have a more restrict visibility that the current context where the name is being invoked. Thus, a reference to a specific name is valid if the visibility of the context of the assertion which contains the reference to the name is at least permissive as the declaration of the referred name itself.
+
+Finally, each \jml\ accessibility rule must hold, and after that, also the \java\ accessibility rules must hold in order to state that the visibility in \jml\ is being respected.
+
+
+\section{A Logic Behind the Connection}
+
+Establish a bidirectional connection between the \vpp\ and the \jml\ needs a clear and concise explanation about its purposes.
+Indeed, it is believe that this connection can possible bring advantages to software developers wiling to use it.
+Moreover, all the items presented bellow form a sustainable basis for the construction of such 
+a connection and feed the motivation to do so.
+
+\subsection{Teaching perspective}
+From an educational point of view,  this connection can be seen as a bridge between \vpp\ and \jml\ in both directions. For example, to teach \vpp\ to students or software developers with a Java background, one may start with  using \jml\ assertions inside Java programs, and thus move such  specifications to \vpp. 
+On the other hand, it is possible to use \vpp\ as a front-end for contract-based programming. For Java students with familiarity with \vpp\  this connection may be of use to move \vpp\ specifications into \jml\ annotations as a starting point for Java development.
+
+\subsection{Tool support}
+Sharing the tool support available from \vpp\ and \jml\ communities will certainly extend the range of supply tools 
+and help in a positive way those who want to use this features. If there is a tool support available at one side, which is not available at the other, one could move the specifications from one side to another, take advantage of the tool support, and then return with the specifications to the starting point. This could also be advantageous if the tool support is better at one side than another.
+
+\subsection{Java code generation}
+The automatic generation of \java\ classes and interfaces from formal \vpp\ specifications could also benefit from the proposed connection.
+Since the JML is a behavioural interface specification language for describing in a non ambiguous way the behaviour of 
+\java\ modules, it can be combined with the \java\ code generator to generate classes/interfaces that should control the 
+behaviour of the \java\ modules generated.
+
+Thus, because \jml\ assertions appear on the form of Java comments, it is possible to compile them, transforming 
+\jml\ assertions into executable \java\ \textit{bytecode}. Then, the execution of the system is regulated by those assertions.
+Furthermore, \jml\ assertions can also be compiled using a regular \java\ compiler. In this way, \jml\ assertions 
+are nothing more than \java\ comments, and have no effects over the execution of the system.
+
+\subsection{Front-end for contract-based programming}
+Establishing this connection enables the use of \vpp\ as a front-end for contract-based programming.
+Hence, it is possible to connect formal specifications of object-oriented systems to behavioural 
+specifications of object-oriented interfaces.
+
+\section{Connecting Between \vpp\ and \jml : Inheritance Approach}
+\label{sec:chapter2:vpptojml}
+
+Considering that \jml\ offers a large variety of different specification approaches \cite{leavens-baker03}, 
+it is necessary to analyse each one carefully and consider which one should be used in this specific situation of connecting \vpp\ and \jml. 
+Before going to this subject in detail, it is important to notice that there are some key features presented in \java \ 
+that must be well known in order to better understand the decisions that are about to be made. 
+For those who are not familiarized whit the concepts presented below, it is recommended to refer to appendix \ref{chap:terminology}.
+Concerning \java\ constructs, it is important to be familiarized with \writeterm{Abstract Classes}, \writeterm{Classes} and \writeterm{Interfaces} \cite{devjavasoft}. 
+The discussion presented below focus on those three \java\ constructs. 
+Besides those constructs, it is also important to understand some of the key principles of the Object-Oriented paradigm such as inheritance and visibility. Those principles are also explained in the terminology appendix.
+
+As one can see on the referred constructs, these three different concepts in the \java\ programming language play different roles. For each of them, it is possible to append the \jml\ assertions, because they are simply \java\ comments, from a \java\ perspective.
+Therefore, a description of each possible alternative can be found below, with their pros and cons, in connection to the ability to connect between \vpp\ and \jml. Such a description will be based on specific items: variables, constructors, methods and inheritance. Each of those items will be explained for each possible approach, in order to make a well-funded decision.
+
+\subsection{Using \java\ Abstract Classes to specify \jml\ assertions}
+
+In this section, the possibility of writing \jml\ assertions inside \java\ abstract classes will be studied. The pros and cons will be carefully consider in order to decide in a further stage what is the best approach for this concrete situation.
+
+Concerning variables, the abstract classes does not have any particular limitation. One can create variables and thus it is possible to append \jml\ assertions to them. A possible future implementation would have the variables already specified, thus it would not be necessary do re-define them. 
+In an abstract class, although it is not possible to instantiate it, it is possible to have constructors. Furthermore, if a \vpp\ specification contains a constructor, it would be possible to write it in \java\ notation inside the referred class, and also append whatever assertions it has in \vpp\ as \jml\ assertions over it. Thus, the constructors offer no limitations to this approach.
+Concerning the usage of methods in an abstract class, there are a few limitations, that do not affect the intended usage of those classes. An abstract class can have a number of methods, and some of those methods (at most all but one) can also have bodies. Thus, each header of the methods presented in a \vpp\ specification can be translated to \java\ headers and all the \vpp\ assertions connected to each method can also be translated into \jml\ assertions.
+
+Reasoning, the three items explained above causes no limitation to a possible usage of abstract classes, but there is another item to discuss: inheritance. 
+As it can be seen below, although \java\ allows multiple inheritance of interfaces, it does not allow multiple inheritance of classes. This concrete limitation affects this possible approach of using abstract classes in this connection. 
+The \jml\ assertions among with some other specific code would be written in an abstract class, and thus the implementation should extend that specific class. Moreover, if the implementation needs to extend another class, it is not possible because it is already extending one: the class containing the specification. 
+This is a serious handicap, because it disables the possibility of having class inheritance in the \vpp\ model, which is not one of the expected outcomes of this connection.
+
+\subsection{Using \java\ Classes to specify \jml\ assertions}
+
+The use of \java\ classes to specify \jml\ assertions is very similar to the one presented above. The variables are dealt in the same way, \ie, they would not cause any difficulty using this approach. 
+The same happens to the constructors. They can be written in the \java\ class with their assertions with no loss. 
+Concerning the inheritance issue, the same problem happens here. It is only possible to have single class inheritance in \java, thus the limitation presented above also applies to this approach. There is no intention in prohibit the usage of single inheritance in the \vpp\ model, thus this is a serious obstacle to this approach.
+Other obstacle of this approach lies with the methods. What differs a class from an abstract class is the obligation of the class to have all the methods with bodies, \ie, the implementation should be in the same place as the specification.
+This would not be a problem if the aim of this project was to translate not only specifications but also implementations, as a \java\ code generator. Considering that the aim of this thesis is connecting no more than \vpp\ and \jml\ assertions, this approach does not make sense. 
+
+\subsection{Using \java\ Interfaces to specify \jml\ assertions}
+
+If the \jml\ assertions will be written in an Interface, there are some limitations, as it can be seen by the interface definition in appendix \ref{chap:terminology}.
+In interfaces, it is not possible to create variables, except static final variables. This is clearly a handicap of the Interface specification, but \jml\ can handle this situation. Using model fields, it is possible to declare model variables that can represent the real variables in a future implementation. Thus, when the concrete \java\  implementation will be built, each concrete variable must have a \jml\ assertion stating which model variable from the specification is being implemented.\
+This way, the concrete variable will be associated with the specification variable, and thus the assertions connected to the specification variable (e.g. invariants) will also apply to the implementation variable. 
+Moreover, it is not possible to have constructors in an interface. If a \vpp\ specification has a constructor with a pre-condition stating that the invariant must be preserved, it can not be written in an interface. Again, the \jml\ can handle with this situation. The possibility of declaring public invariants, override the referred problem. Although the constructor cannot be declare, and thus the pre-condition can not be there, the simple conversion of the constructors pre-condition to the public invariant solves the problem. Thus, when the implementation is completed, the constructor will be affected by the public invariant, and each object of that type must respect the invariant.
+Finally, for each method presented in \vpp\ specification, only the header can be written in the interface. If the method has assertions associated, they can also be written as \jml\ assertions on top of the methods headers with no loss.
+Furthermore, when one complete the implementation, each method of the concrete implementation will have to respect the assertion present in the interface specification.\\
+Concerning the specification inheritance, each method that can possible override one method from the implementation will also have to respect the assertions specified in the interface specification.
+ 
+This approach will lead to a decision, in order to connect each \vpp\ basic and compound types.
+There are two possibilities to use as models fields: \jml\ pure types \cite{leavens-etal07} and \java\ types. Only one of this two alternatives should be used to be mapped to the already existing \vpp\ types \cite{vpplangman}, in order to have concistency in the connection between \vpp\ and \jml.
+This discussion can be found below, in section \ref{chapter2:sec:purevsjava}.
+Moreover, there is no limitation concerning the inheritance. Because \java\ allows multiple inheritance of interfaces, a possible implementation or code generation to \java\  of \vpp\ specification will have to implement the interface created, in order to continue respecting the assertions, and can also implement other interfaces, if the user wants, with no loss at all.
+A resume of all the above possibilities and its pros and cons can be found in table \ref{tab:comp_c_ac_i}.
+
+\begin{table}[h!b!p!]\centering
+\begin{tabular}{| c | c | c | c | c |}
+\hline
+- & Variables & Constructors & Methods & Inheritance \\
+\hline
+\hline
+Class & \textcolor{green}{$\surd$} & \textcolor{red}{$\times$} & \textcolor{red}{$\times$} & \textcolor{red}{$\times$} \\
+\hline
+Abstract Class & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{red}{$\times$}\\
+\hline
+Interface & \textcolor{green}{$\surd$} & \textcolor{red}{$\times$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$}\\
+\hline
+\end{tabular}
+\begin{ovalenv}[2in]
+\textcolor{green}{$\surd$} - No limitations detected\\
+\textcolor{red}{$\times$} - Limitations detected
+\end{ovalenv}
+\caption{Comparison between possible \jml\ implementations using inheritance.}
+\label{tab:comp_c_ac_i}
+\end{table}
+
+Reasoning, the approach that produces less consequences to the implementation of \jml\ is the one that uses interfaces to specify \jml\ assertions. Therefore this approach will be taken into account in further discussion.
+
+\subsection{\jml\ pure types vs \java\ types}
+\label{chapter2:sec:purevsjava}
+
+In \vpp, it is possible to use in each predicate (\eg\ pre-condition) any pre-defined construct that gives as a result a boolean expression.
+Thus, it should be possible to maintain this feature when moving specifications from \vpp\ to \jml, in order to maintain consistency between the semantic value in both sides. \jml\ is more restrictive than \vpp\ with respect to the usage of methods in assertions, such as invariants, pre-conditions and post-conditions. It is only possible to use pure methods inside assertions, in order to avoid possible side effects that such methods could create.
+As it can be seen above, there are two possibilities to use as model fields: \jml\ pure types and \java\ types. Because \java\ types does not give any guarantee of its purity, using them it is not a good solution for this situation. The methods associated to a specific type can provoke side effects, thus they cannot be used in \jml\ assertions.
+
+Reasoning, the purity of \jml\ types allows the maintenance of the possibility of using methods in assertions, preserving the semantic of such \vpp\ predicates. Yet, there is one limitation using these types. \jml\ pure types are model types, meant to be used for specification purposes only. Thus, these types cannot be used for implementation purposes. This means that if a specification uses \jml\ pures types, an implementation of it cannot use those types. Instead, \java\ types must be used. Consequently, there must be a connection between the specification types and the implementation types, otherwise the assertions present in the specification will not be applied to the implementation. Although \jml\ as a specific construct named \textit{represents} responsible for connecting types present in the specification to types present in the implementation, this can only be used when those types are the same. If the types are different, when one try to use the referred clause, the \jml\ type checker will generate a type error. The solution for this is to map each \java\ type used in the implementation to a correspondent \jml\ pure type present in the specification through a model method written inside the implementation. This way, a specific \java\ type will be connected to a \jml\ pure type and the variable will receive its specifications. 
+This approach will grant the possibility of having a number of implementations for one specification, each one with a model method mapping the value of a concrete variable to the correspondent abstract variable.
+
+The syntactic mapping between \vpp\ types and \jml\ types can be found in chapter \ref{chapter3}.
+
+\section{Connecting Between \vpp\ and \jml : Refinement Approach}
+\label{chapter2:sec:vpptojmlref}
+
+An alternative approach from the one presented in section \ref{sec:chapter2:vpptojml} takes advantage of \jml\ definition of refinement \cite{leavens-etal07}.
+It is possible in \jml\ to define specifications both inside \java\ modules or in different files, separating the specification from the implementation. This separation takes place due to a number of reasons: the implementation is not available; the specification is meant to be design first; the \java\ implementation is in a binary format, among other possibilities explained in \cite{leavens-etal07}. Since this project aims to connect \vpp\ and \jml, the specification will be generated before having an implementation. Thus, the alternative solution explained below will be based on this assumption.
+The possibility of separating the specification from the implementation is provided by \jml\ using the definition of refinement. Each file containing \jml\ specifications is connected to the implementations using a refinement construct, establishing the relation between them. There are also rules to be respected using this alternative described in \cite{leavens-etal07}. With respect to this connection, only one of those rules will be explained due to the relevance of it for further decisions. All the other rules will not be explained and will only be considered in the implementation of the proposed connection. The rule referred above states the following:
+
+\begin{ovalenv}
+Non-model methods or constructors can only have bodies in the \java\ file, and never in specification files, otherwise an error will occur.
+\end{ovalenv}
+
+This means that each method or constructor must only have a body in the implementation. However, each method can have a chain of specifications, all connected by a refinement clause, considering the number of specification files existing. 
+
+Just like in the previous alternative, a decision must be made concerning the specification approach. Since \jml\ assertions can be written inside \java\ classes, abstract classes and interfaces, one should be used in this connection. Although there is a discussion in the previous section about the pros and cons of each alternative, that discussion is not relevant for this alternative approach because of two issues: inheritance and the rule highlighted above. In this approach, the inheritance is not used as a means of transferring specifications, thus classes and abstract classes can be used without inheritance limitations. One consequence of the rule mentioned above consists in allowing a specification file, which must be a class, abstract class or interface, to have an incomplete implementation. As a result, one can have a \jml\ specification without the body of the methods written in a \java\ class, without having an error reported. 
+
+Regarding what types should be used in this approach, \jml\ pure types or \java\ types, the choice is the same as in the previous subsection, \ie, \jml\ pure types, and the reasons behind this choice can be found in \ref{chapter2:sec:purevsjava}.
+
+Reasoning, if one wants to use a class to write \jml\ assertions will not yield any problems. The methods could be empty, and all the other functionality is present.
+If one wants to use abstract classes, there are also no limitations. Finally, if one wants to use interfaces, there will be limitations. It will not be possible to write the constructors headers, because interfaces can not yield constructors, nor its assertions. Considering this limitation, and considering also that the other two solutions does not present limitations, using interfaces will not be a satisfactory solution for this approach.
+The full resume of the pros and cons each \java\ construct can be found below:
+
+
+\begin{table}[h!t!p!]\centering
+\begin{tabular}{| c | c | c | c | c |}
+\hline
+- & Variables & Constructors & Methods & Inheritance \\
+\hline
+\hline
+Class & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} \\
+\hline
+Abstract Class & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$}\\
+\hline
+Interface & \textcolor{green}{$\surd$} & \textcolor{red}{$\times$} & \textcolor{green}{$\surd$} & \textcolor{green}{$\surd$}\\
+\hline
+\end{tabular}
+\begin{ovalenv}[2in]
+\textcolor{green}{$\surd$} - No limitations detected\\
+\textcolor{red}{$\times$} - Limitations detected
+\end{ovalenv}
+\caption{Comparison between possible \jml\ implementations using refinement.}
+\label{tab:comp_c_ac_i_ref}
+\end{table}
+
+From the table \ref{tab:comp_c_ac_i_ref}, it can be seen that both classes and abstract classes can be used without any semantic complications in this connection. 
+However, only one should be used. In order to maintain the semantic value of \vpp\ classes, \java\ classes will be used to hold \jml\ assertions and thus to map \vpp\ specifications.
+
+\section{Connecting between \jml\ and \vpp}
+\label{chapter2:sec:jmltovpp}
+
+Concerning the connection from \jml\ to \vpp, there are no semantic limitations, excluding construct differences. Thus, there are no inheritance problems in this connection, and because \vpp\ has only classes, each \jml\ class, abstract class or interface will be mapped into a \vpp\ class. This will make the specification of this mapper a straight forward process, where only the construct limitations will be taken into account.
+
+
+% ********** End of chapter **********

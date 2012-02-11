@@ -1,0 +1,135 @@
+% ********** Chapter 1 **********
+\chapter{Introduction}
+\label{sec:chapter1}
+
+This chapter aims to present the motivation of this work, the necessary background related to the main topics of this thesis and also a number of reading guidelines to ease the reading process. Thus, in section \ref{sec:chapter1:context} one can see the aim of this thesis. Furthermore, in section \ref{chap1:back}, the background is presented. The expected outcomes are listed in section \ref{sec:chapter1:outcomes}, the necessary guidelines are presented in section \ref{sec:chapter1:readguide} and finally the outline of the thesis is presented in section \ref{sec:chapter1:outline}.
+
+
+\section{The Aim Of This Thesis}
+\label{sec:chapter1:context}
+This thesis aims to discuss a number of possibilities for automatic conversion between \vpp\ and \jml, in both directions, as part of a project to enable \vpp\  as a front-end for contract-based programming and the possible usage of tool support both from \vpp\ and \jml. In particular, the project aims at identifying  the notational subsets for which the envisaged automatic translation is possible, as well as describing in detail all the limitations encountered. 
+
+Thus, the development of a prototype proof-of-concept implementation of this bi-directional conversion based on its possible theoretical limitations is the mail goal of this work.
+
+\section{Background}
+\label{chap1:back}
+
+In the subsequent subsections one can see the necessary background of the main topics related to this thesis. In subsection \ref{chap1:back:vpp} one can see an introduction to \vpp and in subsection \ref{chap1:back:jml}, one can find an introduction to \jml\ and it main features. 
+
+\subsection{\vpp}
+\label{chap1:back:vpp}
+
+The Vienna Development Method (VDM) \cite{Fitzgerald&05} \cite{Jones86g} \cite{Overture07} \cite{CskVdmHome} is one of the longest-established Formal Methods for the development of computer-based systems \cite{wikipedia}. It is composed by two formal specification languages: \vdm\ and \vpp. \vpp\ is an extension of \vdm, which supports the modelling of object-oriented and concurrent systems \cite{vpplangman}. 
+
+For the purposes of this work, the object-oriented version (\vpp) will be used to create a mapping between \vpp\ and \jml. 
+
+Along this thesis, it is assumed that the reader is familiarized with the specification language \vpp. However, a number of references is provided in the beginning of this subsection which can be consulted.
+
+
+\subsection{Introduction to \jml}
+\label{chap1:back:jml}
+The \jmllong\ (\jml) \cite{Leavens-etal00} \cite{leavens-baker03} \cite{leavens-Baker-Ruby99b} \cite{leavens-etal07} \cite{poll-jacobs00} is a behavioural 
+interface specification language that can be used to specify the behaviour of \java\ modules. Note that \jml\ was not designed 
+for specifying the behaviour of an entire program.
+
+It combines the \dbclong\ (\dbc) \cite{meyerdbc92} approach and the model-based specification with some elements 
+of the refinement calculus. Because \jml\ is based on the \dbc\ approach, it can only use \textit{query} methods 
+in the assertions. The reason behind this rule is that the methods used in those assertions are requires to be side-effect free. 
+The reserved name given by \jml\ to these methods is \writeterm{pure}. Thus, every method declared as \textit{pure} is side-effect free, and then can be used in all kinds of assertions.
+The general idea behind \jml\ is that a class and its clients celebrate a contract between them. In that contract, there are some rules that both the class and its clients must respect.
+The clients must guarantee a number of properties before invoking a method of a class. Those properties together are the 
+pre-condition of the method; on other hand, the class whose method is being called must guarantee that a number of properties 
+will hold after the call. These properties are called the post-condition of the method.
+
+Besides this pre/post conditions, \jml\ also supports invariants. Generally, invariants are predicates that hold after a sequence of 
+operations. \jml\ capture this idea, but divide the invariants in two categories: static invariants and instance invariants.
+These two categories are different syntactically and semantically. The static invariants are assertions that must hold of the 
+static attributes of a class. These invariants can be identified in \jml\ code with the reserved word \textit{static}. They should not 
+be visible from the client, and usually specifies the behaviour of the algorithm implemented.
+The instance invariants define the acceptable states of an object that the client can see (publics). These invariants must hold 
+after invoking a constructor and in the beginning and end of a method execution. Thus, the type invariant is implicitly included in the 
+pre/post conditions and in the post-condition of the class constructor.
+
+Some of the features mentioned in the above lead us to think that \jml\ is quite similar to \vpp\ concerning to specification 
+capabilities. The pre/post conditions have the same behaviour in both specification languages, and the instance invariant has 
+only some slight differences. For more details about the differences between \jml\ and \vpp, see chapter \ref{chapter3}.
+However this is only the core of \jml. In order to specify the behaviour of object-oriented models, there is a need of having more 
+constructors, allowing other features that the core cannot handle directly.
+Besides the core functionalities of \jml already described above, it is possible to use exceptional post-conditions, assignable clauses \cite{cuiye06}, 
+model fields, ghost fields and model methods, or abstraction functions. For more information, please see \cite{rustan-muller-leino06} \cite{cheon-etal03} \cite{leavens-etal07} \cite{rustan-muller-leino06}.
+
+The precise semantic meaning of each one of the \jml\ features listed above can be seen in section \ref{chap3:langsem}.
+
+A key feature in the object-oriented paradigm is inheritance \cite{devjavasoft}. The possibility of reusing code, 
+override an abstract method for a particular situation or even extend a class overriding its methods, adding more methods and 
+use its properties is extremely useful in the object-oriented paradigm and is a part of its essence.
+
+\jml, as a specification language for the \java object-oriented programming language, also has this feature. Because \jml 
+is a behavioural interface specification language, it is important to assure the inheritance of the specification cases 
+presented in a class. 
+Thus, each subclass of a superclass must respect a contract celebrated between them.
+The superclass invariants must be valid also in the subclasses, and for each overriding method implemented in a subclass, 
+it has to meet the overridden method specifications specified in the superclass.
+The invariants presented in the superclass are applied to each subclass, so the invariants are preserved in the inheritance tree.
+To let the overriding method specification to meet the overridden method specification, there is a need of using a reserved 
+keyword in the JML named \textit{also}. Using the reserved keyword \textit{also} in the subclass to combine the two specification cases of the 
+overridden and the overriding methods, they are conjoined and form a unique specification.
+However, effectively this is not a conjunction. There is a difference between the treatment given to the pre-condition and the post-condition.
+The pre-condition of the overriding method will be a disjunction of the pre-conditions from both specification cases.
+The post-condition will be a conjunction of implications. In each implication, one pre-condition implies the correspondent post-condition.
+
+
+\section{Expected Outcomes}
+\label{sec:chapter1:outcomes}
+
+After the conclusion of this work, it is expected to include in the Overture Tool the capability of 
+connecting between the VDM++ and the JML, in a bidirectional way.
+
+Besides the connection itself, it is also expected to have a solid theoretical background sustaining the referred connection and the possible limitations encountered along this work.  
+A detailed exploration of the possible subsets in which that connection is possible should also be performed in order to understand what constructs can or cannot be used from both specification languages.
+
+\section{Reading guidelines}
+\label{sec:chapter1:readguide}
+
+In order to ease the reading process, one can see the reading guidelines presented below.
+
+Whenever the symbol \writeterm{A} appears, it means that the word A is explained in the terminology chapter.
+
+Furthermore, there are three types of code along this thesis: \vpp\ code; \jml\ code and finally AST code representing Abstract Syntax Tree definitions written in \vdm. Each of these three different possibilities has different layouts as it can be seen below:
+\begin{itemize}
+\item \vpp
+\lstset{language=VDM++}
+\lstset{style=mystyle}
+\begin{lstlisting}
+public op : nat * seq of char ==> ()
+op(n,s) == is not yet specified;
+\end{lstlisting}
+\item \jml
+\lstset{language=Java}
+\lstset{style=JML}
+\begin{lstlisting}
+/*@
+  @ requires x > 1;
+  @*/
+\end{lstlisting}
+\item AST
+\lstset{language=VDM++}
+\lstset{style=AST}
+\begin{lstlisting}
+public PairType ::
+  fst : Type
+  snd : Type;
+\end{lstlisting}
+\end{itemize}
+\lstset{style=mystyle}
+
+Moreover, the tables and figures are referred in the list of tables and the list of figures, respectively., which are in the end of document.
+
+\section{Outline Of Thesis}
+\label{sec:chapter1:outline}
+
+In chapter \ref{sec:chapter1}, the introduction to this project is presented. The conceptual analysis is described in chapter \ref{sec:chapter2}. Furthermore, the correlation between \vpp\ and \jml\ can be seen in chapter \ref{chapter3}. The preliminary design of the proposed connection is presented in chapter \ref{chapter4}. Chapter \ref{chapter5} contains the description of the specification of the bidirectional mapper between \vpp\ and \jml; chapter \ref{chapter6} presents the case studies selected for this thesis and finally, chapter \ref{sec:chapterconclusion} contains the conclusion of this thesis.
+
+Concerning the appendixes, appendix \ref{appendix:jmlast} contains the abstract syntax definition of \jml. Furthermore, appendix \ref{appendix2} contains the complete specification of the mapper, in \vpp. Finally, in appendix \ref{appendix3} it is possible to see the specification and results of the case studies.
+
+% ********** End of chapter **********
